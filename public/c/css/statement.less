@@ -1,0 +1,59 @@
+//out:statement.css, sourcemap: false, compress: true
+
+@import "base.less";
+
+body {background:#FFF}
+.datetimepicker-months .table-condensed{ min-width: 220px;}
+input.form-control[name=month][readonly] { background: #FFF}
+
+.cp-page-statement {
+  .cp-date-bar {
+    background-color:  lighten(@color-primary,15%); color:#FFF;
+    h3 { margin:10px 0; float: left}
+    &.fixed { position: fixed; top:0;left:0;right:0 }
+  }
+  .cp-user-bar {
+
+    background-color: #f0f0f0; color:@color-primary; border-bottom: 1px solid #DDD;
+    small {color:@color-primary}
+  }
+  .cp-table-head-fixed { position: fixed; top:46px;left:0; right:0; width: 100%; background: #FFf;
+
+  }
+  .table-content {
+    margin-top: 80px;
+  }
+  .cp-score-content {
+    dt { margin-top: 10px;}
+    dd { text-align: center; color:lighten(@color-primary,15%);
+      .cp-score { font-size: 28px;}
+    }
+    dl { position: relative;  }
+  }
+  .cp-score-total dd .cp-score { font-size: 90px;}
+  .cp-statement-section {border-top:1px solid #DDD; padding-top: 20px; border-bottom:1px solid #DDD;}
+  .cp-statement-section-carowner {
+    border-right:1px solid #DDD
+  }
+  @media (max-width: 992px){
+    .cp-statement-section-carowner {
+      border-right:none; border-bottom:none;
+    }
+  }
+}
+.cp-activeUser-list {
+  width: 100%;
+  .table, .table tr { width: 100%}
+}
+
+.cp-myRouteDatas-list {
+  .table { margin-top: 0;
+    .cp-active { background:rgb(255, 234, 93)}
+  }
+}
+
+
+.jsgrid-pager-container { text-align: center;
+  .jsgrid-pager-page ,.jsgrid-pager-nav-button { display: inline-block;border:1px solid #DDD; margin: 0 2px;}
+  .jsgrid-pager-current-page { background: @color-primary; color: #FFF}
+}
