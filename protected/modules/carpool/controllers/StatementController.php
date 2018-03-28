@@ -759,8 +759,89 @@ class StatementController extends BaseController {
   }
 
 
+  /***** 接口  *****/
+
+  /**
+   * count number of times 取得某段时间内（月为单位）的拼车人次数据
+   */
+  public function actionGet_months_notimes(){
+    $month_current      = $this->sRequest('month');
+    $recache            = $this->sRequest('recache');
+    $yearMonth_current = empty($month_current) ? date("Y-m") : $month_current;
+
+    $nums_month = 18;
+    $connection = Yii::app()->carpoolDb;
+
+    $months = array();
+
+    for ($i=1; $i<=$nums_month; $i++) {
+       $months[] = date("Y-m",strtotime("$yearMonth_current -".($nums_month-$i)." month"));
+    }
+
+    $listData = array();
+    foreach ($months as $key => $value) {
+      $cacheDatasKey= "statement_".$value."_counts";
+      $cacheDatas = Yii::app()->cache->get($cacheDatasKey);
+
+      if($cacheDatas && !$recache){
+        $listData[] = $cacheDatas;
+      }else{
+
+        $period = $this->getMonthPeriod($value.'-01',"YmdHi");
+
+        //取得该月乘客人次
+        $from['count_p'] = "SELECT love_wall_ID FROM info as i  where  i.status <> 2  AND time >=  ".$period[0]." AND time < ".$period[1]."  GROUP BY carownid, passengerid, love_wall_ID, time";
+        // $from = "SELECT * FROM info as i  where  i.status <> 2  AND time >=  ".$period[0]." AND time < ".$period[1]." ";
+        $sql['count_p']  = "SELECT  count(*) as c
+          FROM
+           (".$from['count_p']." ) as p_info
+        ";
+        $datas['count_p'] = $connection->createCommand($sql['count_p'])->query()->readAll();
 
 
+
+        //从info表取得非空座位的乘搭的乘客数
+        $from['count_c'] = "SELECT carownid FROM info as i  where  i.status <> 2  AND time >=  ".$period[0]." AND time < ".$period[1]." AND love_wall_ID is Null  AND  (carownid is NOT Null AND carownid <> '' )  GROUP BY carownid  , time";
+        $sql['count_c']  = "SELECT  count(*) as c
+          FROM
+           (".$from['count_c']." ) as p_info
+        ";
+        $datas['count_c'] = $connection->createCommand($sql['count_c'])->query()->readAll();
+
+
+
+
+        //从love_wall表取得非空座位的乘搭的乘客数
+        $from['count_c1'] = "SELECT love_wall_ID , (select count(infoid) from info as i where i.love_wall_ID = t.love_wall_ID AND i.status <> 2 ) as pa_num FROM love_wall as t  where  t.status <> 2  AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."   ";
+        $sql['count_c1']  = "SELECT  count(*) as c
+          FROM
+           (".$from['count_c1']." ) as ta
+          WHERE pa_num > 0
+        ";
+        $datas['count_c1'] = $connection->createCommand($sql['count_c1'])->query()->readAll();
+
+
+        $listItem = array(
+          "o"=> $datas['count_c'][0]['c']+$datas['count_c1'][0]['c'],
+          "p"=> $datas['count_p'][0]['c'],
+          "month"=> $value,
+        );
+        $listData[] =  $listItem;
+        $cacheExpiration = strtotime($yearMonth_current) >= strtotime(date('Y-m',strtotime("now"))) ? 900 : 3600*24*60 ;
+        Yii::app()->cache->set($cacheDatasKey, $listItem ,$cacheExpiration);
+
+
+      }
+
+      // exit;
+    }
+    $returnData= array(
+      "lists"=> $listData,
+      "months"=> $months
+    );
+    $this->ajaxReturn(0,$returnData,"success");
+
+  }
 
 
 }
