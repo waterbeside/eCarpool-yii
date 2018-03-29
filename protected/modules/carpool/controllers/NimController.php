@@ -9,12 +9,7 @@ class NimController extends CarpoolBaseController {
 
 
   protected $NIM_OBJ ;
-  protected $nimSetting; /*= array(
-    //网易云信分配的账号，请替换你在管理后台应用下申请的Appkey
-    'appKey' => '2632a5c9b931d5bff981699373190909',
-    //网易云信分配的账号，请替换你在管理后台应用下申请的appSecret
-    'appSecret' => '2a4229b1da20',
-  );*/
+  protected $nimSetting;
 
 
   public function init() {
@@ -169,6 +164,9 @@ class NimController extends CarpoolBaseController {
   //生成im帐号
   public function actionCreate_imid(){
     $loginname = $this->sGet('loginname');
+    if(!$loginname){
+      $this->ajaxReturn(-1,'','no loginname');
+    }
     $userData  =  CP_User::model()->find(" loginname = '$loginname'");
 
     if($userData){
