@@ -846,13 +846,8 @@ class StatementController extends BaseController {
      $month_current   = date("Y-m");
 
      $yearMonth   = empty($month) ? date("Y-m",strtotime("$month_current -1 month")): $month;
-
-
      $period = $this->getMonthPeriod($yearMonth.'-01',"YmdHi");
-
      $connection = Yii::app()->carpoolDb;
-
-
 
      switch ($type) {
        case 0:  //取得司机排名。
@@ -891,6 +886,30 @@ class StatementController extends BaseController {
     * 取得今日拼车清单。
     */
     public function actionGet_today_info(){
+      $today    = date("Y-m-d");
+      $tomorrow = date("Y-m-d",strtotime("$today +1 day"));
+      $period = array(date("Ymd0000",strtotime($today)),date("Ymd0000",strtotime($tomorrow)));
+      $connection = Yii::app()->carpoolDb;
+      // var_dump($period);
+      $where = " i.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND i.time >=  ".$period[0]." AND i.time < ".$period[1]."";
+      $sql = "SELECT i.infoid, i.carownid, i.passengerid, c.name as name_o, c.companyname as companyname_o, p.name as name_p, p.companyname as companyname_p, i.time
+        FROM info as i
+        LEFT JOIN user AS c ON c.uid = i.carownid
+        LEFT JOIN user AS p ON p.uid = i.passengerid
+        WHERE $where
+        ORDER BY i.time DESC
+      ";
+      $datas = $connection->createCommand($sql)->query()->readAll();
+      if($datas){
+        foreach ($datas as $key => $value) {
+          $datas[$key]['time'] = date("H:i",strtotime($value['time']));
+          $datas[$key]['date_time'] = date("Y-m-d H:i",strtotime($value['time']));
+        }
+        return $this->ajaxReturn(0,['lists'=>$datas],"success");
+      }else{
+        return $this->ajaxReturn(-1,[],"fail");
+      }
+
 
    }
 
