@@ -789,8 +789,9 @@ class StatementController extends BaseController {
 
         $period = $this->getMonthPeriod($value.'-01',"YmdHi");
 
+        $where_base =  " i.status <> 2  AND carownid IS NOT NULL AND carownid <> '' AND time >=  ".$period[0]." AND time < ".$period[1]." ";
         //取得该月乘客人次
-        $from['count_p'] = "SELECT love_wall_ID FROM info as i  where  i.status <> 2  AND time >=  ".$period[0]." AND time < ".$period[1]."  GROUP BY carownid, passengerid, love_wall_ID, time";
+        $from['count_p'] = "SELECT love_wall_ID FROM info as i  where  $where_base  GROUP BY carownid, passengerid, love_wall_ID, time";
         // $from = "SELECT * FROM info as i  where  i.status <> 2  AND time >=  ".$period[0]." AND time < ".$period[1]." ";
         $sql['count_p']  = "SELECT  count(*) as c
           FROM
@@ -801,11 +802,8 @@ class StatementController extends BaseController {
 
 
         //从info表取得非空座位的乘搭的乘客数
-        $from['count_c'] = "SELECT carownid FROM info as i  where  i.status <> 2  AND time >=  ".$period[0]." AND time < ".$period[1]." AND love_wall_ID is Null  AND  (carownid is NOT Null AND carownid <> '' )  GROUP BY carownid  , time";
-        $sql['count_c']  = "SELECT  count(*) as c
-          FROM
-           (".$from['count_c']." ) as p_info
-        ";
+        $from['count_c'] = "SELECT carownid FROM info as i  where  $where_base AND love_wall_ID is Null   GROUP BY carownid  , time";
+        $sql['count_c']  = "SELECT  count(*) as c  FROM  (".$from['count_c']." ) as p_info ";
         $datas['count_c'] = $connection->createCommand($sql['count_c'])->query()->readAll();
 
 
@@ -813,11 +811,7 @@ class StatementController extends BaseController {
 
         //从love_wall表取得非空座位的乘搭的乘客数
         $from['count_c1'] = "SELECT love_wall_ID , (select count(infoid) from info as i where i.love_wall_ID = t.love_wall_ID AND i.status <> 2 ) as pa_num FROM love_wall as t  where  t.status <> 2  AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."   ";
-        $sql['count_c1']  = "SELECT  count(*) as c
-          FROM
-           (".$from['count_c1']." ) as ta
-          WHERE pa_num > 0
-        ";
+        $sql['count_c1']  = "SELECT  count(*) as c   FROM (".$from['count_c1']." ) as ta   WHERE pa_num > 0   ";
         $datas['count_c1'] = $connection->createCommand($sql['count_c1'])->query()->readAll();
 
 
@@ -827,7 +821,7 @@ class StatementController extends BaseController {
           "month"=> $value,
         );
         $listData[] =  $listItem;
-        $cacheExpiration = strtotime($yearMonth_current) >= strtotime(date('Y-m',strtotime("now"))) ? 900 : 3600*24*60 ;
+        $cacheExpiration = strtotime($value) >= strtotime(date('Y-m',strtotime("now"))) ? 900 : 3600*24*60 ;
         Yii::app()->cache->set($cacheDatasKey, $listItem ,$cacheExpiration);
 
 
@@ -840,8 +834,65 @@ class StatementController extends BaseController {
       "months"=> $months
     );
     $this->ajaxReturn(0,$returnData,"success");
-
   }
+
+  /**
+   * 取得月排名
+   */
+   public function actionGet_month_ranking(){
+     $type = $this->iGet('type');
+     $month       = $this->sRequest('month');
+     $recache     = $this->sRequest('recache');
+     $month_current   = date("Y-m");
+
+     $yearMonth   = empty($month) ? date("Y-m",strtotime("$month_current -1 month")): $month;
+
+
+     $period = $this->getMonthPeriod($yearMonth.'-01',"YmdHi");
+
+     $connection = Yii::app()->carpoolDb;
+
+
+
+     switch ($type) {
+       case 0:  //取得司机排名。
+          $where = " t.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."";
+          $tableAll = " SELECT carownid, passengerid ,time , MAX(infoid) as infoid FROM info as t WHERE $where GROUP BY carownid , time, passengerid "; //取得当月所有，去除拼同司机同时间同乘客的数据。
+          $limit = " LIMIT 50 ";
+          $sql = "SELECT u.uid, u.name, u.loginname , u.companyname , count(ta.passengerid) as num FROM ( $tableAll ) as ta LEFT JOIN user as u on ta.carownid =  u.uid  GROUP BY  carownid   ORDER BY num DESC $limit";
+          $datas = $connection->createCommand($sql)->query()->readAll();
+          $returnData= array(
+            "lists"=> $datas,
+            "month"=> $yearMonth
+          );
+          return $this->ajaxReturn(0,$returnData,"success");
+
+         break;
+       case 1: //取得乘客排名
+         $where = " t.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."";
+         $tableAll = " SELECT   passengerid ,time , MAX(infoid) as infoid , MAX(carownid) as carownid FROM info as t WHERE $where GROUP BY   time, passengerid "; //取得当月所有，去除拼同司机同时间同乘客的数据。
+         $limit = " LIMIT 50 ";
+         $sql = "SELECT u.uid, u.name, u.loginname , u.companyname , count(ta.infoid) as num  FROM ( $tableAll ) as ta LEFT JOIN user as u on ta.passengerid =  u.uid  GROUP BY  passengerid   ORDER BY num DESC $limit";
+         $datas = $connection->createCommand($sql)->query()->readAll();
+         $returnData= array(
+           "lists"=> $datas,
+           "month"=> $yearMonth
+         );
+         return $this->ajaxReturn(0,$returnData,"success");
+         break;
+
+       default:
+         # code...
+         break;
+     }
+   }
+
+   /**
+    * 取得今日拼车清单。
+    */
+    public function actionGet_today_info(){
+
+   }
 
 
 }
