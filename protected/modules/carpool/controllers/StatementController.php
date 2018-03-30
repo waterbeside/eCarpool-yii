@@ -892,7 +892,7 @@ class StatementController extends BaseController {
       $connection = Yii::app()->carpoolDb;
       // var_dump($period);
       $where = " i.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND i.time >=  ".$period[0]." AND i.time < ".$period[1]."";
-      $sql = "SELECT i.infoid, i.carownid, i.passengerid, c.name as name_o, c.companyname as companyname_o, p.name as name_p, p.companyname as companyname_p, i.time
+      $sql = "SELECT i.infoid, i.carownid, i.passengerid, c.name as name_o, c.companyname as companyname_o,c.carnumber, p.name as name_p, p.companyname as companyname_p, i.time
         FROM info as i
         LEFT JOIN user AS c ON c.uid = i.carownid
         LEFT JOIN user AS p ON p.uid = i.passengerid
