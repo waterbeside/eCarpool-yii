@@ -85,8 +85,88 @@ class MytripController extends CarpoolBaseController {
     }
 
 
+    /**
+     * 历史行程
+     */
+    public function actionHistory(){
+      $connection = Yii::app()->carpoolDb;
+      $uid = $this->userBaseInfo->uid;
+      // $sql = "SELECT * FROM info AS i WHERE passengerid = uid OR carownid = uid UNION ALL select * from wall as w where car"
 
-  
+      // 从info表取得数据
+      $viewSql_u1 = "SELECT
+        a.infoid, (case when a.love_wall_ID IS NULL  then '0' else a.love_wall_ID end) as  love_wall_ID ,'0' as trip_type,
+        a.startpid,a.endpid,a.time,a.status, a.passengerid, a.carownid,
+        '0' as seat_count,
+        '0' as liked_count,
+        '0' as hitchhiked_count
+      FROM
+        info AS a
+      WHERE
+        (a.carownid=$uid OR a.passengerid=$uid)
+        AND status <>2
+        AND (a.love_wall_ID is null OR  a.love_wall_ID not in (select lw.love_wall_ID  from love_wall AS lw where lw.carownid=$uid and lw.status<>2 ) )
+        ORDER BY a.time desc";
+
+      // 从love_wall表取得数据
+      $viewSql_u2 = "SELECT '0' AS infoid, a.love_wall_ID AS love_wall_ID,'1' AS trip_type,
+        a.startpid,a.endpid,a.time,a.status, '0' as passengerid, a.carownid,
+        a.seat_count,
+        (select count(*) from love_wall_like as cl where cl.love_wall_id=a.love_wall_ID) as liked_count,
+        (select count(*)  from info as ci where ci.love_wall_id=a.love_wall_ID and ci.status  <>2) as hitchhiked_count
+      FROM
+        love_wall as a
+      WHERE
+        a.status<>2
+        AND carownid=$uid
+      ORDER BY  a.time desc";
+
+      $viewSql  =  "($viewSql_u1 ) union all ($viewSql_u2 )";
+
+      $datas_total = $connection->createCommand("SELECT count(*)  from ($viewSql) as t")->queryColumn();
+      $total = $datas_total[0];
+
+      $pages = new CPagination($total);
+      $pages->pageSize = 20;
+      $sql_limit = " LIMIT ".$pages->offset." , ".$pages->limit." ";
+      $pageReturn  = array(
+        'pageSize' => $pages->getPageSize(),
+        'pageCount' => $pages->getPageCount(),
+        'currentPage' =>  $pages->getCurrentPage(),
+        'page' =>  $pages->getCurrentPage()+1,
+        'total' =>  $pages->getItemCount(),
+      );
+
+      $sql = "SELECT
+          t.infoid , t.love_wall_ID , t.time, t.trip_type ,t.startpid, t.endpid, t.time, t.status, t.passengerid, t.carownid , t.seat_count , t.liked_count , t.hitchhiked_count,
+          u1.uid as passenger_uid,u1.im_id as passenger_im_id, u1.name as passenger_name, u1.imgpath as passenger_imgpath, u1.sex as passenger_sex, u1.companyname as passenger_company, u1.Department as passenger_department, u1.phone as passenger_phone,
+          u2.uid as driver_uid,u2.im_id as driver_im_id, u2.name as driver_name, u2.imgpath as driver_imgpath, u2.sex as driver_sex, u2.companyname as driver_company, u2.Department as driver_department, u2.phone as driver_phone,
+          a1.addressid as from_address_id,a1.addressname as from_address_name,a1.longtitude as from_longtitude,a1.Latitude as from_latitude,
+          a2.addressid as to_address_id,a2.addressname as to_address_name,a2.longtitude as to_longtitude,a2.Latitude as to_latitude
+        FROM
+          ($viewSql) as t
+          LEFT JOIN user u1 on t.passengerid = u1.uid
+          LEFT JOIN user u2 on t.carownid = u2.uid
+          LEFT JOIN address a1 on t.startpid = a1.addressid
+          LEFT JOIN address a2 on t.endpid = a2.addressid
+        ORDER BY
+          t.time DESC, t.infoid DESC, t.love_wall_id DESC
+        $sql_limit
+      ";
+      $datas = $connection->createCommand($sql)->query()->readAll();
+
+      // var_dump($datas);exit;
+      foreach ($datas as $key => $value) {
+        $datas[$key]['time'] = date('Y-m-d H:i',strtotime($value['time'].'00'));
+
+      }
+
+      $data = array('lists'=>$datas,'page'=>$pageReturn);
+      $this->ajaxReturn(0,$data,'success');
+      exit;
+
+    }
+
 
 
     /**
