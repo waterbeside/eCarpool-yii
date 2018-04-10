@@ -173,7 +173,7 @@ class MytripController extends CarpoolBaseController {
      * 取消行程
      * @return string 返回是否成功的json格式
      */
-    public function actionCancel_route(){
+    public function actionCancel(){
       $id = $this->iRequest('id',0); // 行程id
       $from = $this->sRequest('from',0); // [ info || wall ] 来自info表，还是love_wall表
       $uid = $this->userBaseInfo->uid; //取得用户id
@@ -265,6 +265,102 @@ class MytripController extends CarpoolBaseController {
     }
 
 
+    /**
+     * 结束行程
+     * @return string 返回是否成功的json格式
+     */
+    public function actionFinish(){
+      $id = $this->iRequest('id',0); // 行程id
+      $from = $this->sRequest('from',0); // [ info || wall ] 来自info表，还是love_wall表
+      $uid = $this->userBaseInfo->uid; //取得用户id
+      if(!$id || !$from){
+        $this->ajaxReturn(-10001,[],'参数错误');
+        // $this->error('参数错误');
+      }
+
+      switch ($from) {
+        case 'info': // 来自info表的行程
+          $model = Info::model()->findByPk($id);
+          if(!$model || !($model->passengerid == $uid || $model->carownid == $uid ) ){
+            $this->ajaxReturn(-1,[],'无此数据');
+            // return $this->error('无此数据');
+          }
+          if($model->passengerid == $uid){ // 如果是乘客自己完成，直接变完成状态
+            $datas = array(
+              'status' => 3 ,
+              'cancel_time' => date('YmdHi',time()),
+            );
+          }elseif($model->carownid == $uid){ // 如果是车主完成，重置乘客约车需求状态
+            if($model->love_wall_ID > 0){ // 如果存在love_wall_ID，车主需从容座位页入口方可点完成
+              $this->ajaxReturn(-1,[],'fail');
+              // return $this->error('参数有误');
+            }
+            $datas = array(
+              'status' => 3 ,
+              'cancel_time' => date('YmdHi',time()),
+            );
+          }else{
+            $this->ajaxReturn(-1,[],'无此数据');
+            // return $this->error('无此数据');
+          }
+
+          $model->attributes = $datas;
+          $result = $model->save();
+          if($result){
+            return $this->ajaxReturn(0,array(),'结束成功');
+          }else{
+            $this->ajaxReturn(-1,[],'结束失败，请稍候再试');
+            // return $this->error('取消失败，请稍候再试');
+          }
+          break;
+
+
+        case 'wall': // 来自love_wall表的行程
+          $model = Wall::model()->findByPk($id);
+          if(!$model || $model->carownid != $uid  ){
+            //如果行程不是自己发布，查找该行程下，我是否有搭此车，有则完成。
+            $infoNewData =  array(
+              'status' => 3,
+              'cancel_time' => date('YmdHi',time()),
+            );
+            Info::model()->updateAll($infoNewData,'love_wall_ID='.$id.' AND passengerid ='.$uid.' AND  status <> 2 ');
+            return $this->ajaxReturn(0,array(),'结束成功');
+            // $this->ajaxReturn(-1,[],'无此数据');
+            exit;
+          }
+          $datas = array(
+            'status' => 3,
+            'cancel_time' => date('YmdHi',time()),
+          );
+          $model->attributes = $datas;
+          $result = $model->save(); // 先从love_wall表取消空座位
+          if($result){  //成功后，再取消info表上的乘客行程
+            $infoNewData =  array(
+              'status' => 3,
+              'cancel_time' => date('YmdHi',time()),
+            );
+            Info::model()->updateAll($infoNewData,'love_wall_ID='.$id);
+            return $this->ajaxReturn(0,array(),'结束成功');
+            // return $this->success('取消成功');
+          }else{
+            $this->ajaxReturn(-1,[],'结束失败，请稍候再试');
+
+            // return $this->error('取消失败，请稍候再试');
+          }
+          break;
+
+        default:
+          # code...
+          break;
+      }
+
+    }
+
+
+
+    /**
+     * 取得常用路线
+     */
     public function ActionGet_ofent_trips(){
       $from = $this->sRequest('from',0); // [ info || wall ] 来自info表，还是love_wall表
       $uid = $this->userBaseInfo->uid; //取得用户id
