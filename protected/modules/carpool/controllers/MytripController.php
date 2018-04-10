@@ -1,5 +1,5 @@
 <?php
-class MyrouteController extends CarpoolBaseController {
+class MytripController extends CarpoolBaseController {
   public function init() {
 		parent::init();
 	}
@@ -9,7 +9,7 @@ class MyrouteController extends CarpoolBaseController {
      * 我的行程
      * @return string json
      */
-    public function actionMyroute(){
+    public function actionIndex(){
 
         $uid = $this->userBaseInfo->uid;
         $limit = $this->iRequest('limit');
@@ -84,6 +84,9 @@ class MyrouteController extends CarpoolBaseController {
         // exit(json_encode(array('code'=>0,'desc'=>'','data'=>$data)));
     }
 
+
+
+  
 
 
     /**
