@@ -134,7 +134,7 @@ class WallController extends  CarpoolBaseController {
    * 取得空座位详细数据
    * @return string  以json返回空座位数据
    */
-  public function actionGet_view(){
+  public function actionDetail(){
     $id = $this->iGet('id');
     $uid = $this->userBaseInfo->uid;
     if(!$id){
@@ -157,9 +157,12 @@ class WallController extends  CarpoolBaseController {
     $data['end_info']     = $data['endpid']   ?   Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
     $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath']):array('name'=>'-');
 
-    $data['took_count']   = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2'); //取已坐数
-    $data['hasTake']      = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2 and passengerid ='.$uid.''); //查看是否已搭过此车主的车
-    $data['uid']          = $uid;
+    $data['took_count']       = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2'); //取已坐数
+    $data['took_count_all']   = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status <> 2'); //取已坐数
+    $data['hasTake']          = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2 and passengerid ='.$uid.''); //查看是否已搭过此车主的车
+    $data['hasTake_finish']   = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status = 3 and passengerid ='.$uid.''); //查看是否已搭过此车主的车
+    $data['uid']              = $uid;
+
 
 
     return $this->ajaxReturn(0,$data,'加载成功');

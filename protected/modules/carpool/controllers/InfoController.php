@@ -92,7 +92,7 @@ class InfoController extends  CarpoolBaseController {
     $model = new Info();
     $criteria = new CDbCriteria();
     $criteria->addCondition('love_wall_ID = '.$wallid);
-    $criteria->addCondition('status < 2');
+    $criteria->addCondition('status <> 2');
     $selectArray_info = array('infoid','type','status','carownid');
     $selectArray_user = array('Department','loginname','phone','imgpath','name','uid');
     $criteria->order = 'time asc , subtime asc, infoid asc';
@@ -120,7 +120,7 @@ class InfoController extends  CarpoolBaseController {
    * 取得需求详细数据
    * @return string  以json返回空座位数据
    */
-  public function actionGet_view(){
+  public function actionDetail(){
     $id = $this->iGet('id');
     if(!$id){
       $this->ajaxReturn(-1,[],'lost id');
