@@ -16,7 +16,7 @@ class CarpoolModule extends CWebModule {
 		 			'emulatePrepare'=>true,
 					'username'=>'root',
  		 			'password'=>'123456',
-		 			'charset'=>'utf8',
+					'charset'=>'utf8mb4',
 		 			// 'enableParamLogging'=>YII_DEBUG,
 		 			// 'enableProfiling'=>YII_DEBUG,
 		 			'schemaCachingDuration'=>DEV ? 0 : 10800,
