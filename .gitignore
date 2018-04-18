@@ -14,6 +14,7 @@ node_modules
 public/webim/*
 public/r
 public/h
+public/c
 public/c/as
 /plan.md
 *.back
