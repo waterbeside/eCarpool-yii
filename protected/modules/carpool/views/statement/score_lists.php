@@ -131,6 +131,7 @@
     datas[index]['stm_carowner_passenger_empty'] = el.monthStatement.carowner_passenger_empty;
     datas[index]['stm_carowner_passengers'] = el.monthStatement.carowner_passengers;
     datas[index]['stm_passenger_picked'] = el.monthStatement.passenger_picked;
+    datas[index]['stm_passenger_unpicked'] = el.monthStatement.passenger_unpicked;
     datas[index]['stm_passenger_all'] = el.monthStatement.passenger_all;
     datas[index]['score'] = el.monthScores.total;
     delete datas[index].monthStatement;
@@ -172,10 +173,12 @@
 
             { name: "stm_carowner_all", type: "number", width: 90 ,title:"任司机数" },
             // { name: "stm_carowner_passenger_has", type: "number", width: 80 ,title:"成功 " },
-            // { name: "stm_carowner_passenger_empty", type: "number", width: 80 ,title:"失败" },
             { name: "stm_carowner_passengers", type: "number", width: 90 ,title:"乘客人次" },
+            { name: "stm_carowner_passenger_empty", type: "number", width: 80 ,title:"无客" },
             // { name: "stm_passenger_all", type: "number", width: 80 ,title:"约车总数" },
             { name: "stm_passenger_picked", type: "number", width: 80 ,title:"搭车" },
+            { name: "stm_passenger_unpicked", type: "number", width: 80 ,title:"约车失败" },
+
             { name: "uid", type: "text", width: 80 ,title:"@" ,itemTemplate: function(value, item){
               var link_isAdmin = isAdmin ? '&admin=1' : '';
               return '<a target="_blank" href="/carpool/statement/user_score?uid='+value+'&month='+month+link_isAdmin+'"><i class="fa fa-chevron-circle-right "></i><span class="hidden-xs"> view</span></a>';
