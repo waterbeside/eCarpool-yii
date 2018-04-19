@@ -230,7 +230,7 @@ class MytripController extends CarpoolBaseController {
               'cancel_user_id'=>$uid,
               'cancel_time' => date('YmdHi',time()),
             );
-            Info::model()->updateAll($infoNewData,'love_wall_ID='.$id.' AND passengerid ='.$uid.' AND  status <> 2 ');
+            $res = Info::model()->updateAll($infoNewData,'love_wall_ID='.$id.' AND passengerid ='.$uid.' AND  status <> 2 ');
             return $this->ajaxReturn(0,array(),'取消成功');
             // $this->ajaxReturn(-1,[],'无此数据');
             exit;
@@ -247,7 +247,7 @@ class MytripController extends CarpoolBaseController {
               'cancel_user_id'=>$uid,
               'cancel_time' => date('YmdHi',time()),
             );
-            Info::model()->updateAll($infoNewData,'love_wall_ID='.$id);
+            $res = Info::model()->updateAll($infoNewData,'love_wall_ID='.$id);
             return $this->ajaxReturn(0,array(),'取消成功');
             // return $this->success('取消成功');
           }else{
@@ -285,6 +285,12 @@ class MytripController extends CarpoolBaseController {
             $this->ajaxReturn(-1,[],'无此数据');
             // return $this->error('无此数据');
           }
+          $time = strtotime($model->time.'00');
+          $now           = time();
+          if($now < $time){
+            $this->ajaxReturn(-1,[],'行程未开始，无法结束');
+          }
+          // $model->time
           if($model->passengerid == $uid){ // 如果是乘客自己完成，直接变完成状态
             $datas = array(
               'status' => 3 ,
@@ -317,7 +323,16 @@ class MytripController extends CarpoolBaseController {
 
         case 'wall': // 来自love_wall表的行程
           $model = Wall::model()->findByPk($id);
-          if(!$model || $model->carownid != $uid  ){
+          if(!$model){
+            $this->ajaxReturn(-1,[],'无此数据');
+          }
+          $time = strtotime($model->time.'00');
+          $now           = time();
+          if($now < $time){
+            $this->ajaxReturn(-1,[],'行程未开始，无法结束');
+          }
+
+          if( $model->carownid != $uid  ){
             //如果行程不是自己发布，查找该行程下，我是否有搭此车，有则完成。
             $infoNewData =  array(
               'status' => 3,
