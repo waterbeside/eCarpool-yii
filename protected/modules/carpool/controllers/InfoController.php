@@ -354,6 +354,13 @@ class InfoController extends  CarpoolBaseController {
           // return $this->error('请不要自己搭自己');
         }
 
+        $seat_count = $model_wall->seat_count;
+        $took_count = Info::model()->count('love_wall_ID='.$wid.' and status <> 2');
+        if($took_count >= $seat_count){
+          $this->ajaxReturn(-1,[],'座位已满');
+        }
+        // var_dump($took_count);exit;
+
         //检查是否已经搭过本行程
         $criteria = new CDbCriteria();
         $criteria->addCondition('love_wall_ID = '.$wid);
