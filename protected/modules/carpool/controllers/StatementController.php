@@ -900,7 +900,7 @@ class StatementController extends BaseController {
         ORDER BY i.time DESC
       ";
       $datas = $connection->createCommand($sql)->query()->readAll();
-      if($datas){
+      if($datas!==false){
         foreach ($datas as $key => $value) {
           $datas[$key]['time'] = date("H:i",strtotime($value['time']));
           $datas[$key]['date_time'] = date("Y-m-d H:i",strtotime($value['time']));
