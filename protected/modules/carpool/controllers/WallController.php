@@ -60,6 +60,8 @@ class WallController extends  CarpoolBaseController {
     $criteria = new CDbCriteria();
 
     $criteria->addCondition('status < 2');
+    $criteria->addCondition('endpid IS NOT NULL');
+    $criteria->addCondition('startpid IS NOT NULL');
     $criteria->addCondition('u.company_id = '.$company_id);
     $criteria->addCondition('time < 210000000000');
     $criteria->addCondition('time > '.(date('YmdHi',$time_horizon)));
@@ -87,6 +89,7 @@ class WallController extends  CarpoolBaseController {
     );
 
     $results = $model->findAll($criteria);
+
     // $results = json_decode(CJSON::encode($results),true);
 
     $lists = array();
@@ -114,8 +117,8 @@ class WallController extends  CarpoolBaseController {
       // $lists[$key]['start_info'] = $value['startpid'] ? $model_Address->getDataById($value['startpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
       // $lists[$key]['end_info'] =  $value['endpid'] ?  $model_Address->getDataById($value['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
       // $lists[$key]['owner_info'] =  $value['carownid'] ?  CP_User::model()->getDataById($value['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber']):array('name'=>'-');
-      $lists[$key]['start_info']    = json_decode(CJSON::encode($value->start),true);
-      $lists[$key]['end_info']      = json_decode(CJSON::encode($value->end),true);
+      $lists[$key]['start_info']    = $value->start ? json_decode(CJSON::encode($value->start),true):["addressid"=>NULL,"addressname"=>"-"];
+      $lists[$key]['end_info']      = $value->end ? json_decode(CJSON::encode($value->end),true):["addressid"=>NULL,"addressname"=>"-"];
       $lists[$key]['owner_info']    = array('name'=>$value->user->name,'loginname'=>$value->user->loginname,'Department'=>$value->user->Department,'carnumber'=>$value->user->carnumber,'uid'=>$value->user->uid,'imgpath'=>$value->user->imgpath,'phone'=>$value->user->phone);
 
       //取点赞数

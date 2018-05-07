@@ -27,6 +27,8 @@ class InfoController extends  CarpoolBaseController {
     $model = new Info();
     $criteria = new CDbCriteria();
     $criteria->addCondition('status = 0');
+    $criteria->addCondition('endpid IS NOT NULL');
+    $criteria->addCondition('startpid IS NOT NULL');
     $criteria->addCondition('u.company_id = '.$company_id);
     // $criteria->addCondition('time > '.(date('YmdHi',strtotime("-1 day"))));
     $criteria->addCondition('time > '.(date('YmdHi',strtotime("-1 hour"))));
@@ -68,8 +70,8 @@ class InfoController extends  CarpoolBaseController {
       $lists[$key]['time'] = date('Y-m-d H:i',strtotime($valueArray['time'].'00'));
       $lists[$key]['subtime'] = date('Y-m-d H:i',strtotime($valueArray['subtime'].'00'));
       // var_dump($value->user);
-      $lists[$key]['start_info']      = json_decode(CJSON::encode($value->start),true);
-      $lists[$key]['end_info']        = json_decode(CJSON::encode($value->end),true);
+      $lists[$key]['start_info']    = $value->start ? json_decode(CJSON::encode($value->start),true):["addressid"=>NULL,"addressname"=>"-"];
+      $lists[$key]['end_info']      = $value->end ? json_decode(CJSON::encode($value->end),true):["addressid"=>NULL,"addressname"=>"-"];
       $lists[$key]['passenger_info']  = json_decode(CJSON::encode($value->user),true);
     }
     unset($resulst);
