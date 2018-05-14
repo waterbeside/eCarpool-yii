@@ -767,9 +767,10 @@ class StatementController extends BaseController {
   public function actionGet_months_notimes(){
     $month_current      = $this->sRequest('month');
     $recache            = $this->sRequest('recache');
+    $nums               = $this->sRequest('nums');
     $yearMonth_current = empty($month_current) ? date("Y-m") : $month_current;
 
-    $nums_month = 18;
+    $nums_month = $nums ? $nums : 18;
     $connection = Yii::app()->carpoolDb;
 
     $months = array();
@@ -801,7 +802,7 @@ class StatementController extends BaseController {
 
 
 
-        //从info表取得非空座位的乘搭的乘客数
+        //从info表取得非空座位的乘搭的司机数
         $from['count_c'] = "SELECT carownid FROM info as i  where  $where_base AND love_wall_ID is Null   GROUP BY carownid  , time";
         $sql['count_c']  = "SELECT  count(*) as c  FROM  (".$from['count_c']." ) as p_info ";
         $datas['count_c'] = $connection->createCommand($sql['count_c'])->query()->readAll();
@@ -809,7 +810,7 @@ class StatementController extends BaseController {
 
 
 
-        //从love_wall表取得非空座位的乘搭的乘客数
+        //从love_wall表取得非空座位的乘搭的司机数
         $from['count_c1'] = "SELECT love_wall_ID , (select count(infoid) from info as i where i.love_wall_ID = t.love_wall_ID AND i.status <> 2 ) as pa_num FROM love_wall as t  where  t.status <> 2  AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."   ";
         $sql['count_c1']  = "SELECT  count(*) as c   FROM (".$from['count_c1']." ) as ta   WHERE pa_num > 0   ";
         $datas['count_c1'] = $connection->createCommand($sql['count_c1'])->query()->readAll();
@@ -820,10 +821,10 @@ class StatementController extends BaseController {
           "p"=> $datas['count_p'][0]['c'],
           "month"=> $value,
         );
+        $listItem['carbon'] = $listItem['p']*7.6*2.3/10;
         $listData[] =  $listItem;
         $cacheExpiration = strtotime($value) >= strtotime(date('Y-m',strtotime("now"))) ? 900 : 3600*24*60 ;
         Yii::app()->cache->set($cacheDatasKey, $listItem ,$cacheExpiration);
-
 
       }
 
@@ -835,6 +836,7 @@ class StatementController extends BaseController {
     );
     $this->ajaxReturn(0,$returnData,"success");
   }
+
 
   /**
    * 取得月排名
