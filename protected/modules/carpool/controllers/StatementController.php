@@ -789,16 +789,17 @@ class StatementController extends BaseController {
       }else{
 
         $period = $this->getMonthPeriod($value.'-01',"YmdHi");
-
-        $where_base =  " i.status <> 2  AND carownid IS NOT NULL AND carownid <> '' AND time >=  ".$period[0]." AND time < ".$period[1]." ";
+        $where_base =  " i.status IN(1,3)  AND carownid IS NOT NULL AND carownid <> '' AND time >=  ".$period[0]." AND time < ".$period[1]." ";
         //取得该月乘客人次
-        $from['count_p'] = "SELECT love_wall_ID FROM info as i  where  $where_base  GROUP BY carownid, passengerid, love_wall_ID, time";
+        // $from['count_p'] = "SELECT love_wall_ID FROM info as i  where  $where_base  GROUP BY carownid, passengerid, love_wall_ID, time";
         // $from = "SELECT * FROM info as i  where  i.status <> 2  AND time >=  ".$period[0]." AND time < ".$period[1]." ";
+        $from['count_p'] = "SELECT distinct startpid,endpid,time,carownid,passengerid FROM info as i  where  $where_base ";
         $sql['count_p']  = "SELECT  count(*) as c
           FROM
            (".$from['count_p']." ) as p_info
         ";
         $datas['count_p'] = $connection->createCommand($sql['count_p'])->query()->readAll();
+
 
 
 
