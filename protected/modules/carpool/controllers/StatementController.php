@@ -65,6 +65,7 @@ class StatementController extends BaseController {
     $admin      = $this->sRequest('admin');
     $page       = $this->iRequest('page');
     $pagesize   = $this->iRequest('pagesize');
+    $isJson   = $this->iRequest('json');
     $recache   = $this->iRequest('recache');
     $page       = $page ? $page : 1;
     $pagesize   = $pagesize ? $pagesize : 2000;
@@ -82,6 +83,11 @@ class StatementController extends BaseController {
 
     if($cacheDatas && !$recache){
       $returnDatas['lists']=$cacheDatas;
+      if($isJson){
+        // $this->addTemp($cacheDatas);
+        echo json_encode($cacheDatas);
+        exit;
+      }
       $this->renderPartial('score_lists',$returnDatas);
       exit;
     }
@@ -350,6 +356,10 @@ class StatementController extends BaseController {
     $returnDatas['lists']=$listDatas;
     // var_dump($returnDatas['lists'][0]);
     // exit;
+    if($isJson){
+      echo json_encode($listDatas);
+      exit;
+    }
     $this->renderPartial('score_lists',$returnDatas);
     exit;
 
@@ -914,6 +924,27 @@ class StatementController extends BaseController {
       }else{
         return $this->ajaxReturn(-1,[],"fail");
       }
+
+
+   }
+
+
+   /*写入临时表*/
+   public function addTemp($lists){
+     $connection = Yii::app()->carpoolDb;
+     echo count($lists);
+     exit;
+     foreach ($lists as $key => $value) {
+       $str = json_encode(["pick"=>$value['monthScores']["pick"],"picked"=>$value['monthScores']["picked"]]);
+       $time = date("Y-m-d H:i:s");
+       $sql = "INSERT INTO temp_carpool_score_201805
+       (carpool_uid, loginname, name , balance ,extra, create_time)
+       VALUES
+       ('".$value['uid']."', '".$value['loginname']."', '".$value['name']."' , '".$value['monthScores']['total']."' , '".$str."','".$time."');
+       ";
+       $command=$connection->createCommand($sql);
+       $command->execute();
+     }
 
 
    }
