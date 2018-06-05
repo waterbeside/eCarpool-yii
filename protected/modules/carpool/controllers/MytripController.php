@@ -98,7 +98,7 @@ class MytripController extends CarpoolBaseController {
         a.infoid, (case when a.love_wall_ID IS NULL  then '0' else a.love_wall_ID end) as  love_wall_ID ,'0' as trip_type,
         a.startpid,a.endpid,a.time,a.status, a.passengerid, a.carownid,
         '0' as seat_count,
-        '0' as liked_count,
+        -- '0' as liked_count,
         '0' as hitchhiked_count
       FROM
         info AS a
@@ -112,7 +112,7 @@ class MytripController extends CarpoolBaseController {
       $viewSql_u2 = "SELECT '0' AS infoid, a.love_wall_ID AS love_wall_ID,'1' AS trip_type,
         a.startpid,a.endpid,a.time,a.status, '0' as passengerid, a.carownid,
         a.seat_count,
-        (select count(*) from love_wall_like as cl where cl.love_wall_id=a.love_wall_ID) as liked_count,
+        -- (select count(*) from love_wall_like as cl where cl.love_wall_id=a.love_wall_ID) as liked_count,
         (select count(*)  from info as ci where ci.love_wall_id=a.love_wall_ID and ci.status  <>2) as hitchhiked_count
       FROM
         love_wall as a
@@ -127,7 +127,7 @@ class MytripController extends CarpoolBaseController {
       $total = $datas_total[0];
 
       $pages = new CPagination($total);
-      $pages->pageSize = 20;
+      $pages->pageSize = 15;
       $sql_limit = " LIMIT ".$pages->offset." , ".$pages->limit." ";
       $pageReturn  = array(
         'pageSize' => $pages->getPageSize(),
@@ -138,7 +138,7 @@ class MytripController extends CarpoolBaseController {
       );
 
       $sql = "SELECT
-          t.infoid , t.love_wall_ID , t.time, t.trip_type ,t.startpid, t.endpid, t.time, t.status, t.passengerid, t.carownid , t.seat_count , t.liked_count , t.hitchhiked_count,
+          t.infoid , t.love_wall_ID , t.time, t.trip_type ,t.startpid, t.endpid, t.time, t.status, t.passengerid, t.carownid , t.seat_count ,  t.hitchhiked_count,
           u1.uid as passenger_uid,u1.im_id as passenger_im_id, u1.name as passenger_name, u1.imgpath as passenger_imgpath, u1.sex as passenger_sex, u1.companyname as passenger_company, u1.Department as passenger_department, u1.phone as passenger_phone,
           u2.uid as driver_uid,u2.im_id as driver_im_id, u2.name as driver_name, u2.imgpath as driver_imgpath, u2.sex as driver_sex, u2.companyname as driver_company, u2.Department as driver_department, u2.phone as driver_phone,
           a1.addressid as from_address_id,a1.addressname as from_address_name,a1.longtitude as from_longtitude,a1.Latitude as from_latitude,
