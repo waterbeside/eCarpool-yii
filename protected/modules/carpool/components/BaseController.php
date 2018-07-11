@@ -14,7 +14,7 @@ class BaseController extends CController {
 	public function init() {
 
 		parent::init();
-		header('Access-Control-Allow-Headers: authorization,x-requested-with,content-type,Content-Length');
+		header('Access-Control-Allow-Headers: authorization,x-requested-with,content-type,Content-Length,Accept-Lag,Accept-Language');
 		header('Access-Control-Allow-Origin: *');
 		if($_SERVER['REQUEST_METHOD']=='OPTIONS'){
 			exit;
