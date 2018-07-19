@@ -5,7 +5,7 @@ Desktop.ini
 .idea
 protected/vendor/*
 protected/runtime/*
-
+/yii
 
 build
 assets-map.json
