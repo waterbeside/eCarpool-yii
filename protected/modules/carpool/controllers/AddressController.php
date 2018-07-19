@@ -72,7 +72,7 @@ class AddressController extends  CarpoolBaseController {
     $data['latitude']   = $this->sPost('latitude');
     $data['longtitude'] = $this->sPost('longtitude');
     $data['city']       = $this->sPost('city');
-    $data['company_id'] = $this->userBaseInfo->company_id;
+    $data['company_id'] = $this->getUser()->company_id;
     if(empty($data['name'])){
       $this->ajaxReturn(-10001,[],'站点名称不能为空');
     }

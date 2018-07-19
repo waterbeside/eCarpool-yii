@@ -21,8 +21,9 @@ class WallController extends  CarpoolBaseController {
    */
   public function actionGet_lists(){
     //取得自己所属公司的id
-    $company_id   = $this->userBaseInfo->company_id;
-    $uid          = $this->userBaseInfo->uid;
+    $userInfo = $this->getUser();
+    $uid          = $userInfo->uid;
+    $company_id   = $userInfo->company_id;
     // $time_horizon = strtotime("-1 day"); //展示多少天前至今的数据
     $time_horizon = strtotime("-1 hour");
     $keyword      = $this->sGet('keyword');
@@ -198,13 +199,14 @@ class WallController extends  CarpoolBaseController {
         Yii::import('application.modules.carpool.controllers.AddressController');
         $AddressCtr = new AddressController('Address');
       }
+      $userInfo = $this->getUser();
       $createAddress = array();
       //处理起点
       if(!$datas['startpid']){
         $startDatas = $datas['start'];
         if(!empty($startDatas['longtitude']) && !empty($startDatas['latitude']) && !empty($startDatas['name'])){
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $startDatas['company_id'] = $this->userBaseInfo->company_id;
+          $startDatas['company_id'] = $userInfo->company_id;
           $createID = $AddressCtr->createAddressID($startDatas);
           if($createID){
             $createAddress[0] = $startDatas;
@@ -225,7 +227,7 @@ class WallController extends  CarpoolBaseController {
         $endDatas = $datas['end'];
         if(!empty($endDatas['longtitude']) && !empty($endDatas['latitude']) && !empty($endDatas['name'])){
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $endDatas['company_id'] = $this->userBaseInfo->company_id;
+          $endDatas['company_id'] = $userInfo->company_id;
           $createID = $AddressCtr->createAddressID($endDatas);
           if($createID){
             $createAddress[1] = $endDatas;

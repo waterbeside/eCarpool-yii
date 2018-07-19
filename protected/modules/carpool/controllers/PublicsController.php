@@ -57,8 +57,8 @@ class PublicsController extends CarpoolBaseController {
         'loginname' => $jwtDecode->loginname,
         'iss' => $jwtDecode->iss,
 				'uid' => $jwtDecode->uid,
-        "name" => $jwtDecode->name,
-        "company_id" => $jwtDecode->company_id,
+        // "name" => $jwtDecode->name,
+        // "company_id" => $jwtDecode->company_id,
       );
       /*$model = new CarpoolLoginForm();
       $jwt = $model->createJwt($userData);*/

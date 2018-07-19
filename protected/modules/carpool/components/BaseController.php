@@ -45,6 +45,7 @@ class BaseController extends CController {
 			}*/
 		}else{
 			$jwtDecode = Yii::app()->JWT->decode($Authorization);
+			// var_dump($jwtDecode);exit;
 			$this->userJwt = $jwtDecode;
 			if(isset($jwtDecode->iss) && isset($jwtDecode->loginname) && isset($jwtDecode->uid)){
 				$now = time();
@@ -64,8 +65,6 @@ class BaseController extends CController {
 					'loginname' => $jwtDecode->loginname,
 					// 'iss' => $jwtDecode->iss,
 					'uid' => $jwtDecode->uid,
-					"name" => $jwtDecode->name,
-					"company_id" => $jwtDecode->company_id,
 					"client" => $jwtDecode->client,
 					// "avatar" => $jwtDecode->avatar
 				);

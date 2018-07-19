@@ -442,6 +442,7 @@ class MytripController extends CarpoolBaseController {
         Yii::import('application.modules.carpool.controllers.AddressController');
         $AddressCtr = new AddressController('Address');
       }
+      $userInfo = $this->getUser();
       $createAddress = array();
       //处理起点
       if(!$datas['startpid']){
@@ -449,7 +450,7 @@ class MytripController extends CarpoolBaseController {
         if(!empty($startDatas['longtitude']) && !empty($startDatas['latitude']) && !empty($startDatas['addressname'])){
           $startDatas['name'] = $startDatas['addressname'];
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $startDatas['company_id'] = $this->userBaseInfo->company_id;
+          $startDatas['company_id'] = $userInfo->company_id;
           $createID = $AddressCtr->createAddressID($startDatas);
           if($createID){
             $createAddress[0] = $startDatas;
@@ -469,7 +470,7 @@ class MytripController extends CarpoolBaseController {
         if(!empty($endDatas['longtitude']) && !empty($endDatas['latitude']) && !empty($endDatas['addressname'])){
           $endDatas['name'] = $endDatas['addressname'];
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $endDatas['company_id'] = $this->userBaseInfo->company_id;
+          $endDatas['company_id'] = $userInfo->company_id;
           $createID = $AddressCtr->createAddressID($endDatas);
           if($createID){
             $createAddress[1] = $endDatas;

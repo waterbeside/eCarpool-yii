@@ -64,7 +64,8 @@ class UserController extends  CarpoolBaseController {
     $data['latitude']   = $this->sPost('latitude');
     $data['longtitude'] = $this->sPost('longtitude');
     $data['city']       = $this->sPost('city');
-    $data['company_id'] = $this->userBaseInfo->company_id;
+    $userInfo           = $this->getUser();
+    $data['company_id'] = $userInfo->company_id;
     $from               = $this->sPost('from');
     if($from=="work"){
       $from = "company";
@@ -83,7 +84,6 @@ class UserController extends  CarpoolBaseController {
       //处理起点
         if(!empty($data['longtitude']) && !empty($data['latitude']) && !empty($data['name'])){
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $data['company_id'] = $this->userBaseInfo->company_id;
           $createID = $AddressCtr->createAddressID($data);
 
           if($createID){
