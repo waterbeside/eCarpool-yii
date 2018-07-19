@@ -2,7 +2,7 @@
 date_default_timezone_set("PRC");
 // change the following paths if necessary
 define('APP_PATH', dirname(dirname(__FILE__)));
-$yii = APP_PATH . '/../yii_framework/yii.php';
+$yii = APP_PATH . '/./yii/yii.php';
 $config = APP_PATH . '/protected/config/main.php';
 
 define('ENV', isset($_SERVER['ENV']) ? $_SERVER['ENV'] : 'production');
