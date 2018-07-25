@@ -137,6 +137,7 @@ class MytripController extends CarpoolBaseController {
         'total' =>  $pages->getItemCount(),
       );
 
+      $whereTime = date('YmdHi',strtotime('+15 minute'));
       $sql = "SELECT
           t.infoid , t.love_wall_ID , t.time, t.trip_type ,t.startpid, t.endpid, t.time, t.status, t.passengerid, t.carownid , t.seat_count ,  t.hitchhiked_count,
           u1.uid as passenger_uid,u1.im_id as passenger_im_id, u1.name as passenger_name, u1.imgpath as passenger_imgpath, u1.sex as passenger_sex, u1.companyname as passenger_company, u1.Department as passenger_department, u1.phone as passenger_phone,
@@ -149,6 +150,8 @@ class MytripController extends CarpoolBaseController {
           LEFT JOIN user u2 on t.carownid = u2.uid
           LEFT JOIN address a1 on t.startpid = a1.addressid
           LEFT JOIN address a2 on t.endpid = a2.addressid
+        WHERE
+          t.time < $whereTime 
         ORDER BY
           t.time DESC, t.infoid DESC, t.love_wall_id DESC
         $sql_limit
