@@ -57,7 +57,13 @@ class InfoController extends  CarpoolBaseController {
       'params' =>  $page->params,
     );
 
-    $results = $model->findAll($criteria);
+    if(isset($_GET[$page->pageVar]) && $_GET[$page->pageVar] > $page->getPageCount()){
+      $results = array();
+      $this->ajaxReturn(20002,$data,'No data');
+
+    }else{
+      $results = $model->findAll($criteria);
+    }
 
 
     $lists = array();

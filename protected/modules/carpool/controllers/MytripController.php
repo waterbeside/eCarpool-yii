@@ -129,6 +129,7 @@ class MytripController extends CarpoolBaseController {
       $pages = new CPagination($total);
       $pages->pageSize = 15;
       $sql_limit = " LIMIT ".$pages->offset." , ".$pages->limit." ";
+
       $pageReturn  = array(
         'pageSize' => $pages->getPageSize(),
         'pageCount' => $pages->getPageCount(),
@@ -136,27 +137,32 @@ class MytripController extends CarpoolBaseController {
         'page' =>  $pages->getCurrentPage()+1,
         'total' =>  $pages->getItemCount(),
       );
+      if(isset($_GET[$pages->pageVar]) && $_GET[$pages->pageVar] > $pages->getPageCount()){
+        $datas = array();
+        $this->ajaxReturn(20002,$data,'No data');
 
-      $whereTime = date('YmdHi',strtotime('+15 minute'));
-      $sql = "SELECT
-          t.infoid , t.love_wall_ID , t.time, t.trip_type ,t.startpid, t.endpid, t.time, t.status, t.passengerid, t.carownid , t.seat_count ,  t.hitchhiked_count,
-          u1.uid as passenger_uid,u1.im_id as passenger_im_id, u1.name as passenger_name, u1.imgpath as passenger_imgpath, u1.sex as passenger_sex, u1.companyname as passenger_company, u1.Department as passenger_department, u1.phone as passenger_phone,
-          u2.uid as driver_uid,u2.im_id as driver_im_id, u2.name as driver_name, u2.imgpath as driver_imgpath, u2.sex as driver_sex, u2.companyname as driver_company, u2.Department as driver_department, u2.phone as driver_phone,
-          a1.addressid as from_address_id,a1.addressname as from_address_name,a1.longtitude as from_longtitude,a1.Latitude as from_latitude,
-          a2.addressid as to_address_id,a2.addressname as to_address_name,a2.longtitude as to_longtitude,a2.Latitude as to_latitude
-        FROM
-          ($viewSql) as t
-          LEFT JOIN user u1 on t.passengerid = u1.uid
-          LEFT JOIN user u2 on t.carownid = u2.uid
-          LEFT JOIN address a1 on t.startpid = a1.addressid
-          LEFT JOIN address a2 on t.endpid = a2.addressid
-        WHERE
-          t.time < $whereTime 
-        ORDER BY
-          t.time DESC, t.infoid DESC, t.love_wall_id DESC
-        $sql_limit
-      ";
-      $datas = $connection->createCommand($sql)->query()->readAll();
+      }else{
+        $whereTime = date('YmdHi',strtotime('+15 minute'));
+        $sql = "SELECT
+            t.infoid , t.love_wall_ID , t.time, t.trip_type ,t.startpid, t.endpid, t.time, t.status, t.passengerid, t.carownid , t.seat_count ,  t.hitchhiked_count,
+            u1.uid as passenger_uid,u1.im_id as passenger_im_id, u1.name as passenger_name, u1.imgpath as passenger_imgpath, u1.sex as passenger_sex, u1.companyname as passenger_company, u1.Department as passenger_department, u1.phone as passenger_phone,
+            u2.uid as driver_uid,u2.im_id as driver_im_id, u2.name as driver_name, u2.imgpath as driver_imgpath, u2.sex as driver_sex, u2.companyname as driver_company, u2.Department as driver_department, u2.phone as driver_phone,
+            a1.addressid as from_address_id,a1.addressname as from_address_name,a1.longtitude as from_longtitude,a1.Latitude as from_latitude,
+            a2.addressid as to_address_id,a2.addressname as to_address_name,a2.longtitude as to_longtitude,a2.Latitude as to_latitude
+          FROM
+            ($viewSql) as t
+            LEFT JOIN user u1 on t.passengerid = u1.uid
+            LEFT JOIN user u2 on t.carownid = u2.uid
+            LEFT JOIN address a1 on t.startpid = a1.addressid
+            LEFT JOIN address a2 on t.endpid = a2.addressid
+          WHERE
+            t.time < $whereTime
+          ORDER BY
+            t.time DESC, t.infoid DESC, t.love_wall_id DESC
+          $sql_limit
+        ";
+        $datas = $connection->createCommand($sql)->query()->readAll();
+      }
 
       // var_dump($datas);exit;
       foreach ($datas as $key => $value) {
