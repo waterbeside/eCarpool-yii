@@ -337,7 +337,18 @@ class AssistController extends BaseController {
    * @return [type] [description]
    */
   public function actionGet_companys(){
-    $companys = Company::model()->findAll("status = 1 ");
+
+    //临时关闭，只返回当前用户公司
+    $this->checklogin();
+    $userInfo = $this->getUser();
+    $uid = $userInfo->uid;
+    $department = $userInfo->Department;
+    $company_id = $userInfo->company_id;
+    $companys = Company::model()->findAll("company_id =  $company_id");
+
+
+
+    // $companys = Company::model()->findAll("status = 1 ");
     if($companys){
       $lists = array();
       foreach ($companys as $key => $value) {
@@ -359,13 +370,21 @@ class AssistController extends BaseController {
    * @return [type] [description]
    */
   public function actionGet_departments(){
-    $company_id = $this->iGet('company_id');
-    $criteria = new CDbCriteria();
-    $criteria->condition = "is_active = 1 AND company_id = ".$company_id;
-    $criteria->order = "department_name ASC";
 
+    //临时关闭，只返回当前用户公司
+    $this->checklogin();
+    $userInfo = $this->getUser();
+    $uid = $userInfo->uid;
+    $department = $userInfo->Department;
 
-    $department = Department::model()->findAll($criteria);
+    $department = Department::model()->findAll("department_name =  '$department'");
+
+    //
+    // $company_id = $this->iGet('company_id');
+    // $criteria = new CDbCriteria();
+    // $criteria->condition = "is_active = 1 AND company_id = ".$company_id;
+    // $criteria->order = "department_name ASC";
+    // $department = Department::model()->findAll($criteria);
 
     if($department!==false){
 

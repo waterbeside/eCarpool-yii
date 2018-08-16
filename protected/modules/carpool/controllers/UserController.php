@@ -269,6 +269,10 @@ class UserController extends  CarpoolBaseController {
  * @param  boolean         $isAjaxReturn [1为输出json ,0为return 列表数组]
  */
   public function actionRecommendation($type = false,$limit = 0 ,$isAjaxReturn = true){
+    //关闭接口
+    $this->ajaxReturn(0,array("user_list"=>[]),"success");
+    exit;
+
     $type = $type === false ?  $this->iGet('type',0) : $type;
     $limit = $limit ?  $limit : $this->iGet('limit',20)  ;
 
