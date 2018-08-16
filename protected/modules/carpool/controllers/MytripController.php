@@ -1,5 +1,5 @@
 <?php
-class MyrouteController extends CarpoolBaseController {
+class MytripController extends CarpoolBaseController {
   public function init() {
 		parent::init();
 	}
@@ -9,7 +9,7 @@ class MyrouteController extends CarpoolBaseController {
      * 我的行程
      * @return string json
      */
-    public function actionMyroute(){
+    public function actionIndex(){
 
         $uid = $this->userBaseInfo->uid;
         $limit = $this->iRequest('limit');
@@ -85,12 +85,104 @@ class MyrouteController extends CarpoolBaseController {
     }
 
 
+    /**
+     * 历史行程
+     */
+    public function actionHistory(){
+      $connection = Yii::app()->carpoolDb;
+      $uid = $this->userBaseInfo->uid;
+      // $sql = "SELECT * FROM info AS i WHERE passengerid = uid OR carownid = uid UNION ALL select * from wall as w where car"
+
+      // 从info表取得数据
+      $viewSql_u1 = "SELECT
+        a.infoid, (case when a.love_wall_ID IS NULL  then '0' else a.love_wall_ID end) as  love_wall_ID ,'0' as trip_type,
+        a.startpid,a.endpid,a.time,a.status, a.passengerid, a.carownid,
+        '0' as seat_count,
+        -- '0' as liked_count,
+        '0' as hitchhiked_count
+      FROM
+        info AS a
+      WHERE
+        (a.carownid=$uid OR a.passengerid=$uid)
+        AND status <>2
+        AND (a.love_wall_ID is null OR  a.love_wall_ID not in (select lw.love_wall_ID  from love_wall AS lw where lw.carownid=$uid and lw.status<>2 ) )
+        ORDER BY a.time desc";
+
+      // 从love_wall表取得数据
+      $viewSql_u2 = "SELECT '0' AS infoid, a.love_wall_ID AS love_wall_ID,'1' AS trip_type,
+        a.startpid,a.endpid,a.time,a.status, '0' as passengerid, a.carownid,
+        a.seat_count,
+        -- (select count(*) from love_wall_like as cl where cl.love_wall_id=a.love_wall_ID) as liked_count,
+        (select count(*)  from info as ci where ci.love_wall_id=a.love_wall_ID and ci.status  <>2) as hitchhiked_count
+      FROM
+        love_wall as a
+      WHERE
+        a.status<>2
+        AND carownid=$uid
+      ORDER BY  a.time desc";
+
+      $viewSql  =  "($viewSql_u1 ) union all ($viewSql_u2 )";
+
+      $datas_total = $connection->createCommand("SELECT count(*)  from ($viewSql) as t")->queryColumn();
+      $total = $datas_total[0];
+
+      $pages = new CPagination($total);
+      $pages->pageSize = 15;
+      $sql_limit = " LIMIT ".$pages->offset." , ".$pages->limit." ";
+
+      $pageReturn  = array(
+        'pageSize' => $pages->getPageSize(),
+        'pageCount' => $pages->getPageCount(),
+        'currentPage' =>  $pages->getCurrentPage(),
+        'page' =>  $pages->getCurrentPage()+1,
+        'total' =>  $pages->getItemCount(),
+      );
+      if(isset($_GET[$pages->pageVar]) && $_GET[$pages->pageVar] > $pages->getPageCount()){
+        $datas = array();
+        $this->ajaxReturn(20002,$data,'No data');
+
+      }else{
+        $whereTime = date('YmdHi',strtotime('+15 minute'));
+        $sql = "SELECT
+            t.infoid , t.love_wall_ID , t.time, t.trip_type ,t.startpid, t.endpid, t.time, t.status, t.passengerid, t.carownid , t.seat_count ,  t.hitchhiked_count,
+            u1.uid as passenger_uid,u1.im_id as passenger_im_id, u1.name as passenger_name, u1.imgpath as passenger_imgpath, u1.sex as passenger_sex, u1.companyname as passenger_company, u1.Department as passenger_department, u1.phone as passenger_phone,
+            u2.uid as driver_uid,u2.im_id as driver_im_id, u2.name as driver_name, u2.imgpath as driver_imgpath, u2.sex as driver_sex, u2.companyname as driver_company, u2.Department as driver_department, u2.phone as driver_phone,
+            a1.addressid as from_address_id,a1.addressname as from_address_name,a1.longtitude as from_longtitude,a1.Latitude as from_latitude,
+            a2.addressid as to_address_id,a2.addressname as to_address_name,a2.longtitude as to_longtitude,a2.Latitude as to_latitude
+          FROM
+            ($viewSql) as t
+            LEFT JOIN user u1 on t.passengerid = u1.uid
+            LEFT JOIN user u2 on t.carownid = u2.uid
+            LEFT JOIN address a1 on t.startpid = a1.addressid
+            LEFT JOIN address a2 on t.endpid = a2.addressid
+          WHERE
+            t.time < $whereTime
+          ORDER BY
+            t.time DESC, t.infoid DESC, t.love_wall_id DESC
+          $sql_limit
+        ";
+        $datas = $connection->createCommand($sql)->query()->readAll();
+      }
+
+      // var_dump($datas);exit;
+      foreach ($datas as $key => $value) {
+        $datas[$key]['time'] = date('Y-m-d H:i',strtotime($value['time'].'00'));
+
+      }
+
+      $data = array('lists'=>$datas,'page'=>$pageReturn);
+      $this->ajaxReturn(0,$data,'success');
+      exit;
+
+    }
+
+
 
     /**
      * 取消行程
      * @return string 返回是否成功的json格式
      */
-    public function actionCancel_route(){
+    public function actionCancel(){
       $id = $this->iRequest('id',0); // 行程id
       $from = $this->sRequest('from',0); // [ info || wall ] 来自info表，还是love_wall表
       $uid = $this->userBaseInfo->uid; //取得用户id
@@ -147,7 +239,7 @@ class MyrouteController extends CarpoolBaseController {
               'cancel_user_id'=>$uid,
               'cancel_time' => date('YmdHi',time()),
             );
-            Info::model()->updateAll($infoNewData,'love_wall_ID='.$id.' AND passengerid ='.$uid.' AND  status <> 2 ');
+            $res = Info::model()->updateAll($infoNewData,'love_wall_ID='.$id.' AND passengerid ='.$uid.' AND  status <> 2 ');
             return $this->ajaxReturn(0,array(),'取消成功');
             // $this->ajaxReturn(-1,[],'无此数据');
             exit;
@@ -164,7 +256,7 @@ class MyrouteController extends CarpoolBaseController {
               'cancel_user_id'=>$uid,
               'cancel_time' => date('YmdHi',time()),
             );
-            Info::model()->updateAll($infoNewData,'love_wall_ID='.$id);
+            $res = Info::model()->updateAll($infoNewData,'love_wall_ID='.$id);
             return $this->ajaxReturn(0,array(),'取消成功');
             // return $this->success('取消成功');
           }else{
@@ -182,6 +274,117 @@ class MyrouteController extends CarpoolBaseController {
     }
 
 
+    /**
+     * 结束行程
+     * @return string 返回是否成功的json格式
+     */
+    public function actionFinish(){
+      $id = $this->iRequest('id',0); // 行程id
+      $from = $this->sRequest('from',0); // [ info || wall ] 来自info表，还是love_wall表
+      $uid = $this->userBaseInfo->uid; //取得用户id
+      if(!$id || !$from){
+        $this->ajaxReturn(-10001,[],'参数错误');
+        // $this->error('参数错误');
+      }
+
+      switch ($from) {
+        case 'info': // 来自info表的行程
+          $model = Info::model()->findByPk($id);
+          if(!$model || !($model->passengerid == $uid || $model->carownid == $uid ) ){
+            $this->ajaxReturn(-1,[],'无此数据');
+            // return $this->error('无此数据');
+          }
+          $time = strtotime($model->time.'00');
+          $now           = time();
+          if($now < $time){
+            $this->ajaxReturn(-1,[],'行程未开始，无法结束');
+          }
+          // $model->time
+          if($model->passengerid == $uid){ // 如果是乘客自己完成，直接变完成状态
+            $datas = array(
+              'status' => 3 ,
+              'cancel_time' => date('YmdHi',time()),
+            );
+          }elseif($model->carownid == $uid){ // 如果是车主完成，重置乘客约车需求状态
+            if($model->love_wall_ID > 0){ // 如果存在love_wall_ID，车主需从容座位页入口方可点完成
+              $this->ajaxReturn(-1,[],'fail');
+              // return $this->error('参数有误');
+            }
+            $datas = array(
+              'status' => 3 ,
+              'cancel_time' => date('YmdHi',time()),
+            );
+          }else{
+            $this->ajaxReturn(-1,[],'无此数据');
+            // return $this->error('无此数据');
+          }
+
+          $model->attributes = $datas;
+          $result = $model->save();
+          if($result){
+            return $this->ajaxReturn(0,array(),'结束成功');
+          }else{
+            $this->ajaxReturn(-1,[],'结束失败，请稍候再试');
+            // return $this->error('取消失败，请稍候再试');
+          }
+          break;
+
+
+        case 'wall': // 来自love_wall表的行程
+          $model = Wall::model()->findByPk($id);
+          if(!$model){
+            $this->ajaxReturn(-1,[],'无此数据');
+          }
+          $time = strtotime($model->time.'00');
+          $now           = time();
+          if($now < $time){
+            $this->ajaxReturn(-1,[],'行程未开始，无法结束');
+          }
+
+          if( $model->carownid != $uid  ){
+            //如果行程不是自己发布，查找该行程下，我是否有搭此车，有则完成。
+            $infoNewData =  array(
+              'status' => 3,
+              'cancel_time' => date('YmdHi',time()),
+            );
+            Info::model()->updateAll($infoNewData,'love_wall_ID='.$id.' AND passengerid ='.$uid.' AND  status <> 2 ');
+            return $this->ajaxReturn(0,array(),'结束成功');
+            // $this->ajaxReturn(-1,[],'无此数据');
+            exit;
+          }
+          $datas = array(
+            'status' => 3,
+            'cancel_time' => date('YmdHi',time()),
+          );
+          $model->attributes = $datas;
+          $result = $model->save(); // 先从love_wall表取消空座位
+          if($result){  //成功后，再取消info表上的乘客行程
+            $infoNewData =  array(
+              'status' => 3,
+              'cancel_time' => date('YmdHi',time()),
+            );
+            Info::model()->updateAll($infoNewData,'love_wall_ID='.$id);
+            return $this->ajaxReturn(0,array(),'结束成功');
+            // return $this->success('取消成功');
+          }else{
+            $this->ajaxReturn(-1,[],'结束失败，请稍候再试');
+
+            // return $this->error('取消失败，请稍候再试');
+          }
+          break;
+
+        default:
+          # code...
+          break;
+      }
+
+    }
+
+
+
+    /**
+     * 取得常用路线
+     */
     public function ActionGet_ofent_trips(){
       $from = $this->sRequest('from',0); // [ info || wall ] 来自info表，还是love_wall表
       $uid = $this->userBaseInfo->uid; //取得用户id
@@ -248,6 +451,7 @@ class MyrouteController extends CarpoolBaseController {
         Yii::import('application.modules.carpool.controllers.AddressController');
         $AddressCtr = new AddressController('Address');
       }
+      $userInfo = $this->getUser();
       $createAddress = array();
       //处理起点
       if(!$datas['startpid']){
@@ -255,7 +459,7 @@ class MyrouteController extends CarpoolBaseController {
         if(!empty($startDatas['longtitude']) && !empty($startDatas['latitude']) && !empty($startDatas['addressname'])){
           $startDatas['name'] = $startDatas['addressname'];
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $startDatas['company_id'] = $this->userBaseInfo->company_id;
+          $startDatas['company_id'] = $userInfo->company_id;
           $createID = $AddressCtr->createAddressID($startDatas);
           if($createID){
             $createAddress[0] = $startDatas;
@@ -275,7 +479,7 @@ class MyrouteController extends CarpoolBaseController {
         if(!empty($endDatas['longtitude']) && !empty($endDatas['latitude']) && !empty($endDatas['addressname'])){
           $endDatas['name'] = $endDatas['addressname'];
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $endDatas['company_id'] = $this->userBaseInfo->company_id;
+          $endDatas['company_id'] = $userInfo->company_id;
           $createID = $AddressCtr->createAddressID($endDatas);
           if($createID){
             $createAddress[1] = $endDatas;

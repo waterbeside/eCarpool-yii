@@ -14,7 +14,7 @@ class BaseController extends CController {
 	public function init() {
 
 		parent::init();
-		header('Access-Control-Allow-Headers: authorization,x-requested-with,content-type,Content-Length');
+		header('Access-Control-Allow-Headers: authorization,x-requested-with,content-type,Content-Length,Accept-Lag,Accept-Language');
 		header('Access-Control-Allow-Origin: *');
 		if($_SERVER['REQUEST_METHOD']=='OPTIONS'){
 			exit;
@@ -45,6 +45,7 @@ class BaseController extends CController {
 			}*/
 		}else{
 			$jwtDecode = Yii::app()->JWT->decode($Authorization);
+			// var_dump($jwtDecode);exit;
 			$this->userJwt = $jwtDecode;
 			if(isset($jwtDecode->iss) && isset($jwtDecode->loginname) && isset($jwtDecode->uid)){
 				$now = time();
@@ -64,8 +65,6 @@ class BaseController extends CController {
 					'loginname' => $jwtDecode->loginname,
 					// 'iss' => $jwtDecode->iss,
 					'uid' => $jwtDecode->uid,
-					"name" => $jwtDecode->name,
-					"company_id" => $jwtDecode->company_id,
 					"client" => $jwtDecode->client,
 					// "avatar" => $jwtDecode->avatar
 				);
@@ -497,13 +496,31 @@ class BaseController extends CController {
 
 		/**
 	   * 数组去重
-	   * @return [type]      [description]
 	   */
 	  public function arrayUniq($arr){
 	    $arr = array_unique($arr);
 	    $arr = array_values($arr);
 	    return $arr;
 	  }
+
+		/**
+	   * 二维数组去重
+	   */
+		 function arrayUniqByKey($arr,$key){
+         //建立一个目标数组
+         $res = array();
+         foreach ($arr as $value) {
+            //查看有没有重复项
+            if(isset($res[$value[$key]])){
+                  //有：销毁
+                  unset($value[$key]);
+            }
+            else{
+                 $res[$value[$key]] = $value;
+            }
+         }
+         return $res;
+     }
 
 		/**
 	   * 清除数组内每个元素的两头空格

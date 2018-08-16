@@ -75,7 +75,7 @@ class CarpoolLoginForm extends CFormModel {
 			}
 		}
 
-		if($userDataObj->md5password != $this->hashPassword($this->password)){
+		if(strtolower($userDataObj->md5password) != strtolower($this->hashPassword($this->password))){
 				$this->addError('password', '用户名或密码错误');
 				// var_dump($this->getError('password'));
 			 return false;

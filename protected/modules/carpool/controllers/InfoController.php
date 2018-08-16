@@ -20,13 +20,15 @@ class InfoController extends  CarpoolBaseController {
    * @return string 返回json格式数据
    */
   public function actionGet_lists(){
-
-    $company_id = $this->userBaseInfo->company_id;
+    $userInfo = $this->getUser();
+    $company_id = $userInfo->company_id;
     $keyword      = $this->sGet('keyword');
 
     $model = new Info();
     $criteria = new CDbCriteria();
     $criteria->addCondition('status = 0');
+    $criteria->addCondition('endpid IS NOT NULL');
+    $criteria->addCondition('startpid IS NOT NULL');
     $criteria->addCondition('u.company_id = '.$company_id);
     // $criteria->addCondition('time > '.(date('YmdHi',strtotime("-1 day"))));
     $criteria->addCondition('time > '.(date('YmdHi',strtotime("-1 hour"))));
@@ -55,7 +57,13 @@ class InfoController extends  CarpoolBaseController {
       'params' =>  $page->params,
     );
 
-    $results = $model->findAll($criteria);
+    if(isset($_GET[$page->pageVar]) && $_GET[$page->pageVar] > $page->getPageCount()){
+      $results = array();
+      $this->ajaxReturn(20002,$data,'No data');
+
+    }else{
+      $results = $model->findAll($criteria);
+    }
 
 
     $lists = array();
@@ -68,8 +76,8 @@ class InfoController extends  CarpoolBaseController {
       $lists[$key]['time'] = date('Y-m-d H:i',strtotime($valueArray['time'].'00'));
       $lists[$key]['subtime'] = date('Y-m-d H:i',strtotime($valueArray['subtime'].'00'));
       // var_dump($value->user);
-      $lists[$key]['start_info']      = json_decode(CJSON::encode($value->start),true);
-      $lists[$key]['end_info']        = json_decode(CJSON::encode($value->end),true);
+      $lists[$key]['start_info']    = $value->start ? json_decode(CJSON::encode($value->start),true):["addressid"=>NULL,"addressname"=>"-"];
+      $lists[$key]['end_info']      = $value->end ? json_decode(CJSON::encode($value->end),true):["addressid"=>NULL,"addressname"=>"-"];
       $lists[$key]['passenger_info']  = json_decode(CJSON::encode($value->user),true);
     }
     unset($resulst);
@@ -92,7 +100,7 @@ class InfoController extends  CarpoolBaseController {
     $model = new Info();
     $criteria = new CDbCriteria();
     $criteria->addCondition('love_wall_ID = '.$wallid);
-    $criteria->addCondition('status < 2');
+    $criteria->addCondition('status <> 2');
     $selectArray_info = array('infoid','type','status','carownid');
     $selectArray_user = array('Department','loginname','phone','imgpath','name','uid');
     $criteria->order = 'time asc , subtime asc, infoid asc';
@@ -120,7 +128,7 @@ class InfoController extends  CarpoolBaseController {
    * 取得需求详细数据
    * @return string  以json返回空座位数据
    */
-  public function actionGet_view(){
+  public function actionDetail(){
     $id = $this->iGet('id');
     if(!$id){
       $this->ajaxReturn(-1,[],'lost id');
@@ -169,13 +177,14 @@ class InfoController extends  CarpoolBaseController {
           Yii::import('application.modules.carpool.controllers.AddressController');
           $AddressCtr = new AddressController('Address');
         }
+        $userInfo = $this->getUser();
         $createAddress = array();
         //处理起点
         if(!$datas['startpid']){
           $startDatas = $datas['start'];
           if(!empty($startDatas['longtitude']) && !empty($startDatas['latitude']) && !empty($startDatas['name'])){
             //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-            $startDatas['company_id'] = $this->userBaseInfo->company_id;
+            $startDatas['company_id'] = $userInfo->company_id;
             $createID = $AddressCtr->createAddressID($startDatas);
             if($createID){
               $createAddress[0] = $startDatas;
@@ -196,7 +205,7 @@ class InfoController extends  CarpoolBaseController {
           $endDatas = $datas['end'];
           if(!empty($endDatas['longtitude']) && !empty($endDatas['latitude']) && !empty($endDatas['name'])){
             //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-            $endDatas['company_id'] = $this->userBaseInfo->company_id;
+            $endDatas['company_id'] = $userInfo->company_id;
             $createID = $AddressCtr->createAddressID($endDatas);
             if($createID){
               $createAddress[1] = $endDatas;
@@ -353,6 +362,13 @@ class InfoController extends  CarpoolBaseController {
           $this->ajaxReturn(-1,[],'你不能自己搭自己');
           // return $this->error('请不要自己搭自己');
         }
+
+        $seat_count = $model_wall->seat_count;
+        $took_count = Info::model()->count('love_wall_ID='.$wid.' and status <> 2');
+        if($took_count >= $seat_count){
+          $this->ajaxReturn(-1,[],'座位已满');
+        }
+        // var_dump($took_count);exit;
 
         //检查是否已经搭过本行程
         $criteria = new CDbCriteria();

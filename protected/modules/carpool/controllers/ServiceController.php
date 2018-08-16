@@ -187,7 +187,7 @@ class ServiceController extends BaseController {
           $model->attributes = $formData;
           $isAllData = in_array($formData['client'],array('ios','android')) ? 1 : 0 ;
           $data = $model->loginByPhone($phone,$isAllData);
-          
+
           if (isset($data['code']) && $data['code'] > 0) {
             $this->ajaxReturn($data['code'],[],$data['desc']);
           }else if(isset($data['user'])){
@@ -284,11 +284,12 @@ class ServiceController extends BaseController {
     $templateid =   $templates['u_'.$usage] ; //短信验证码的模板ID
     $SMS = $this->requireSms();
 
-    $user   = $this->userBaseInfo;
+
+    $userInfo = $this->getUser();
 
     switch ($usage) {
       case 300:
-        $params = [$user->name];
+        $params = [$userInfo->name];
         break;
       case 302:
         $param  = $this->sRequest('param');
@@ -296,7 +297,7 @@ class ServiceController extends BaseController {
         if(!$param){
           $this->ajaxReturn(-10001,[],'param empty');
         }
-        $params = [$user->name,$link_code];
+        $params = [$userInfo->name,$link_code];
         break;
 
       default:

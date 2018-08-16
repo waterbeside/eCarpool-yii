@@ -266,7 +266,53 @@ class AssistController extends BaseController {
   }
 
 
+  /**
+   * 取得行程详程
+   */
+  public function actionGet_trip_detail(){
+    $type = $this->sGet('type');
+    $id   =   $this->iGet('id');
+    if($type=="info"){
+      $modal_data = Info::model()->findByPk($id);
+      if(!$modal_data){
+        $this->ajaxReturn(-1,[],'数据不存在');
+        // return $this->error('数据不存在');
+      }
+      $data                 = json_decode(CJSON::encode($modal_data),true); //把對像轉為數組
+      $data['time']         = strtotime($data['time'].'00');
+      $data['time_format']  = date('Y-m-d H:i',$data['time']);
+      $data['start_info']   = $data['startpid'] ?   Address::model()->getDataById($data['startpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
+      $data['end_info']     = $data['endpid']   ?   Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
+      $data['passenger_info']   = $data['passengerid'] ?   CP_User::model()->getDataById($data['passengerid'],['uid','name','loginname','deptid','Department','carnumber','imgpath']):array('name'=>'-');
+      $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','Department','carnumber','imgpath']):array('name'=>'-');
+      // return $this->success('加载成功','',$data);
+      $this->ajaxReturn(0,$data,'success');
+    }
 
+    if($type=="wall"||$type=="lovewall"){
+      $modal_data = Wall::model()->findByPk($id);
+      if(!$modal_data){
+        $this->ajaxReturn(-1,[],"数据不存在");
+        // return $this->error('数据不存在');
+      }
+      if($modal_data->status > 1){
+        // $this->ajaxReturn(-1,[],"本行程已取消或完结");
+        // return $this->error('本行程已取消或完结');
+      }
+      $data                 = json_decode(CJSON::encode($modal_data),true); //把對像轉為數組
+      $data['time']         = strtotime($data['time'].'00');
+      $data['time_format']  = date('Y-m-d H:i',$data['time']);
+      $data['start_info']   = $data['startpid'] ?   Address::model()->getDataById($data['startpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
+      $data['end_info']     = $data['endpid']   ?   Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
+      $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','Department','carnumber','imgpath']):array('name'=>'-');
+      $data['took_count']   = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2'); //取已坐数
+
+
+      $this->ajaxReturn(0,$data,'success');
+    }
+
+
+  }
 
 
   public function actionGet_disclaimer(){
@@ -291,7 +337,18 @@ class AssistController extends BaseController {
    * @return [type] [description]
    */
   public function actionGet_companys(){
-    $companys = Company::model()->findAll("status = 1 ");
+
+    //临时关闭，只返回当前用户公司
+    $this->checklogin();
+    $userInfo = $this->getUser();
+    $uid = $userInfo->uid;
+    $department = $userInfo->Department;
+    $company_id = $userInfo->company_id;
+    $companys = Company::model()->findAll("company_id =  $company_id");
+
+
+
+    // $companys = Company::model()->findAll("status = 1 ");
     if($companys){
       $lists = array();
       foreach ($companys as $key => $value) {
@@ -313,13 +370,21 @@ class AssistController extends BaseController {
    * @return [type] [description]
    */
   public function actionGet_departments(){
-    $company_id = $this->iGet('company_id');
-    $criteria = new CDbCriteria();
-    $criteria->condition = "is_active = 1 AND company_id = ".$company_id;
-    $criteria->order = "department_name ASC";
 
+    //临时关闭，只返回当前用户公司
+    $this->checklogin();
+    $userInfo = $this->getUser();
+    $uid = $userInfo->uid;
+    $department = $userInfo->Department;
 
-    $department = Department::model()->findAll($criteria);
+    $department = Department::model()->findAll("department_name =  '$department'");
+
+    //
+    // $company_id = $this->iGet('company_id');
+    // $criteria = new CDbCriteria();
+    // $criteria->condition = "is_active = 1 AND company_id = ".$company_id;
+    // $criteria->order = "department_name ASC";
+    // $department = Department::model()->findAll($criteria);
 
     if($department!==false){
 

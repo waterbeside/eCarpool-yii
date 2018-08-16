@@ -64,7 +64,8 @@ class UserController extends  CarpoolBaseController {
     $data['latitude']   = $this->sPost('latitude');
     $data['longtitude'] = $this->sPost('longtitude');
     $data['city']       = $this->sPost('city');
-    $data['company_id'] = $this->userBaseInfo->company_id;
+    $userInfo           = $this->getUser();
+    $data['company_id'] = $userInfo->company_id;
     $from               = $this->sPost('from');
     if($from=="work"){
       $from = "company";
@@ -83,7 +84,6 @@ class UserController extends  CarpoolBaseController {
       //处理起点
         if(!empty($data['longtitude']) && !empty($data['latitude']) && !empty($data['name'])){
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $data['company_id'] = $this->userBaseInfo->company_id;
           $createID = $AddressCtr->createAddressID($data);
 
           if($createID){
@@ -228,7 +228,7 @@ class UserController extends  CarpoolBaseController {
     if($userInfo->company_id){
       $criteria->addCondition('company_id = '.$userInfo->company_id);
     }
-    $criteria->addCondition(" im_id IS NOT NULL");
+    $criteria->addCondition(" im_md5password IS NOT NULL");
     $criteria->addCondition("name like '%".$identifier."%' or loginname = '".$identifier."' or phone = '".$identifier."'");
 
 
@@ -260,6 +260,105 @@ class UserController extends  CarpoolBaseController {
 
     $this->ajaxReturn(0,array("user_list"=>$user_list),"success");
     exit;
+  }
+
+/**
+ * 好友推荐
+ * @param  boolean,integer $type         [场境，1为推荐同部门好友，2为推荐搭过车的好友，0为从1和2场境中抽取若干好友]
+ * @param  integer         $limit        [抽取条数]
+ * @param  boolean         $isAjaxReturn [1为输出json ,0为return 列表数组]
+ */
+  public function actionRecommendation($type = false,$limit = 0 ,$isAjaxReturn = true){
+    //关闭接口
+    $this->ajaxReturn(0,array("user_list"=>[]),"success");
+    exit;
+
+    $type = $type === false ?  $this->iGet('type',0) : $type;
+    $limit = $limit ?  $limit : $this->iGet('limit',20)  ;
+
+    $model = new CP_User();
+    $criteria = new CDbCriteria();
+    $connection = Yii::app()->carpoolDb;
+
+    $userInfo = $this->getUser();
+    $uid = $userInfo->uid;
+    $department = $userInfo->Department;
+
+
+    switch ($type) {
+      case 1:  //推荐同部门好友
+        $criteria->addCondition('is_active = 1');
+
+        if($userInfo->company_id){
+          $criteria->addCondition("company_id = '$userInfo->company_id'");
+        }
+        $criteria->addCondition("Department = '$department'");
+        $criteria->addCondition("uid <> '$uid'");
+        $criteria->addCondition(" im_md5password IS NOT NULL");
+        $criteria->order = 'rand()';
+        $criteria->limit = $limit;
+        $results = $model->findAll($criteria);
+        $user_list = [];
+
+        foreach ($results as $key => $value) {
+          $returnValue = array(
+            "uid"=>$value->uid,
+            "im_id"=>$value->im_id,
+            "name"=>$value->name,
+            "avatar"=>$value->imgpath ? $value->imgpath : "im/default.png",
+            "department"=>$value->Department,
+            // "company_id"=>$value->company_id
+          );
+          $user_list[] = $returnValue;
+        }
+        if($isAjaxReturn){
+          $this->ajaxReturn(0,array("user_list"=>$user_list),"success");
+        }else{
+          return $user_list;
+        }
+
+        break;
+      case 2: //推荐拼过车的好友
+
+        $sql = "SELECT DISTINCT t.uid ,  u.im_id, u.name, u.imgpath, u.department FROM
+          (SELECT DISTINCT
+            if(i.passengerid <> $uid,i.passengerid,i.carownid) AS uid , time
+            FROM info as i
+            WHERE (i.carownid =  '$uid' OR  i.passengerid =  '$uid') AND i.passengerid IS NOT NULL AND i.carownid IS NOT NULL
+            ORDER BY i.time DESC
+          ) as t
+          LEFT JOIN user AS u ON t.uid = u.uid AND u.is_active = 1 AND im_md5password IS NOT NULL
+          WHERE u.uid <> $uid LIMIT $limit
+        ";
+        $results = $connection->createCommand($sql)->query()->readAll();
+        $user_list = [];
+        foreach ($results as $key => $value) {
+          $returnValue = $value ;
+          $returnValue["avatar"] = $value['imgpath'] ? $value['imgpath'] : "im/default.png";
+
+          $user_list[] = $returnValue;
+        }
+        if($isAjaxReturn){
+          $this->ajaxReturn(0,array("user_list"=>$user_list),"success");
+        }else{
+          return $user_list;
+        }
+        break;
+
+      default:  //随机查找好友
+
+        $user_list_01 = $this->actionRecommendation(1,$limit,false);
+        $user_list_02 = $this->actionRecommendation(2,$limit,false);
+        $user_list = array_merge($user_list_02,$user_list_01);
+        $user_list = $this->arrayUniqByKey($user_list,"uid");
+        shuffle($user_list); //随机排序数组
+        $user_list = array_slice($user_list,0,$limit);
+        // var_dump(count($user_list));
+        $this->ajaxReturn(0,array("user_list"=>$user_list),"success");
+
+        break;
+    }
+
 
 
 

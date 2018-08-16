@@ -21,8 +21,9 @@ class WallController extends  CarpoolBaseController {
    */
   public function actionGet_lists(){
     //取得自己所属公司的id
-    $company_id   = $this->userBaseInfo->company_id;
-    $uid          = $this->userBaseInfo->uid;
+    $userInfo = $this->getUser();
+    $uid          = $userInfo->uid;
+    $company_id   = $userInfo->company_id;
     // $time_horizon = strtotime("-1 day"); //展示多少天前至今的数据
     $time_horizon = strtotime("-1 hour");
     $keyword      = $this->sGet('keyword');
@@ -60,6 +61,8 @@ class WallController extends  CarpoolBaseController {
     $criteria = new CDbCriteria();
 
     $criteria->addCondition('status < 2');
+    $criteria->addCondition('endpid IS NOT NULL');
+    $criteria->addCondition('startpid IS NOT NULL');
     $criteria->addCondition('u.company_id = '.$company_id);
     $criteria->addCondition('time < 210000000000');
     $criteria->addCondition('time > '.(date('YmdHi',$time_horizon)));
@@ -86,7 +89,14 @@ class WallController extends  CarpoolBaseController {
       'params' =>  $page->params,
     );
 
-    $results = $model->findAll($criteria);
+
+    if(isset($_GET[$page->pageVar]) && $_GET[$page->pageVar] > $page->getPageCount()){
+      $results = array();
+      $this->ajaxReturn(20002,$data,'No data');
+    }else{
+      $results = $model->findAll($criteria);
+    }
+
     // $results = json_decode(CJSON::encode($results),true);
 
     $lists = array();
@@ -114,8 +124,8 @@ class WallController extends  CarpoolBaseController {
       // $lists[$key]['start_info'] = $value['startpid'] ? $model_Address->getDataById($value['startpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
       // $lists[$key]['end_info'] =  $value['endpid'] ?  $model_Address->getDataById($value['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
       // $lists[$key]['owner_info'] =  $value['carownid'] ?  CP_User::model()->getDataById($value['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber']):array('name'=>'-');
-      $lists[$key]['start_info']    = json_decode(CJSON::encode($value->start),true);
-      $lists[$key]['end_info']      = json_decode(CJSON::encode($value->end),true);
+      $lists[$key]['start_info']    = $value->start ? json_decode(CJSON::encode($value->start),true):["addressid"=>NULL,"addressname"=>"-"];
+      $lists[$key]['end_info']      = $value->end ? json_decode(CJSON::encode($value->end),true):["addressid"=>NULL,"addressname"=>"-"];
       $lists[$key]['owner_info']    = array('name'=>$value->user->name,'loginname'=>$value->user->loginname,'Department'=>$value->user->Department,'carnumber'=>$value->user->carnumber,'uid'=>$value->user->uid,'imgpath'=>$value->user->imgpath,'phone'=>$value->user->phone);
 
       //取点赞数
@@ -134,7 +144,7 @@ class WallController extends  CarpoolBaseController {
    * 取得空座位详细数据
    * @return string  以json返回空座位数据
    */
-  public function actionGet_view(){
+  public function actionDetail(){
     $id = $this->iGet('id');
     $uid = $this->userBaseInfo->uid;
     if(!$id){
@@ -157,9 +167,12 @@ class WallController extends  CarpoolBaseController {
     $data['end_info']     = $data['endpid']   ?   Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
     $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath']):array('name'=>'-');
 
-    $data['took_count']   = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2'); //取已坐数
-    $data['hasTake']      = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2 and passengerid ='.$uid.''); //查看是否已搭过此车主的车
-    $data['uid']          = $uid;
+    $data['took_count']       = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2'); //取已坐数
+    $data['took_count_all']   = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status <> 2'); //取已坐数
+    $data['hasTake']          = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2 and passengerid ='.$uid.''); //查看是否已搭过此车主的车
+    $data['hasTake_finish']   = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status = 3 and passengerid ='.$uid.''); //查看是否已搭过此车主的车
+    $data['uid']              = $uid;
+
 
 
     return $this->ajaxReturn(0,$data,'加载成功');
@@ -192,13 +205,14 @@ class WallController extends  CarpoolBaseController {
         Yii::import('application.modules.carpool.controllers.AddressController');
         $AddressCtr = new AddressController('Address');
       }
+      $userInfo = $this->getUser();
       $createAddress = array();
       //处理起点
       if(!$datas['startpid']){
         $startDatas = $datas['start'];
         if(!empty($startDatas['longtitude']) && !empty($startDatas['latitude']) && !empty($startDatas['name'])){
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $startDatas['company_id'] = $this->userBaseInfo->company_id;
+          $startDatas['company_id'] = $userInfo->company_id;
           $createID = $AddressCtr->createAddressID($startDatas);
           if($createID){
             $createAddress[0] = $startDatas;
@@ -219,7 +233,7 @@ class WallController extends  CarpoolBaseController {
         $endDatas = $datas['end'];
         if(!empty($endDatas['longtitude']) && !empty($endDatas['latitude']) && !empty($endDatas['name'])){
           //如果id为空，通过经纬度查找id.无则创建一个并返回id;
-          $endDatas['company_id'] = $this->userBaseInfo->company_id;
+          $endDatas['company_id'] = $userInfo->company_id;
           $createID = $AddressCtr->createAddressID($endDatas);
           if($createID){
             $createAddress[1] = $endDatas;

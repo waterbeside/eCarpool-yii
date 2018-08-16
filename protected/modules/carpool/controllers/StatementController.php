@@ -65,6 +65,7 @@ class StatementController extends BaseController {
     $admin      = $this->sRequest('admin');
     $page       = $this->iRequest('page');
     $pagesize   = $this->iRequest('pagesize');
+    $isJson   = $this->iRequest('json');
     $recache   = $this->iRequest('recache');
     $page       = $page ? $page : 1;
     $pagesize   = $pagesize ? $pagesize : 2000;
@@ -82,6 +83,11 @@ class StatementController extends BaseController {
 
     if($cacheDatas && !$recache){
       $returnDatas['lists']=$cacheDatas;
+      if($isJson){
+        // $this->addTemp($cacheDatas);
+        echo json_encode($cacheDatas);
+        exit;
+      }
       $this->renderPartial('score_lists',$returnDatas);
       exit;
     }
@@ -350,6 +356,10 @@ class StatementController extends BaseController {
     $returnDatas['lists']=$listDatas;
     // var_dump($returnDatas['lists'][0]);
     // exit;
+    if($isJson){
+      echo json_encode($listDatas);
+      exit;
+    }
     $this->renderPartial('score_lists',$returnDatas);
     exit;
 
@@ -759,8 +769,185 @@ class StatementController extends BaseController {
   }
 
 
+  /***** 接口  *****/
+
+  /**
+   * count number of times 取得某段时间内（月为单位）的拼车人次数据
+   */
+  public function actionGet_months_notimes(){
+    $month_current      = $this->sRequest('month');
+    $recache            = $this->sRequest('recache');
+    $nums               = $this->sRequest('nums');
+    $yearMonth_current = empty($month_current) ? date("Y-m") : $month_current;
+
+    $nums_month = $nums ? $nums : 18;
+    $connection = Yii::app()->carpoolDb;
+
+    $months = array();
+
+    for ($i=1; $i<=$nums_month; $i++) {
+       $months[] = date("Y-m",strtotime("$yearMonth_current -".($nums_month-$i)." month"));
+    }
+
+    $listData = array();
+    foreach ($months as $key => $value) {
+      $cacheDatasKey= "statement_".$value."_counts";
+      $cacheDatas = Yii::app()->cache->get($cacheDatasKey);
+
+      if($cacheDatas && !$recache){
+        $listData[] = $cacheDatas;
+      }else{
+
+        $period = $this->getMonthPeriod($value.'-01',"YmdHi");
+        $where_base =  " i.status IN(1,3)  AND carownid IS NOT NULL AND carownid <> '' AND time >=  ".$period[0]." AND time < ".$period[1]." ";
+        //取得该月乘客人次
+        // $from['count_p'] = "SELECT love_wall_ID FROM info as i  where  $where_base  GROUP BY carownid, passengerid, love_wall_ID, time";
+        // $from = "SELECT * FROM info as i  where  i.status <> 2  AND time >=  ".$period[0]." AND time < ".$period[1]." ";
+        $from['count_p'] = "SELECT distinct startpid,endpid,time,carownid,passengerid FROM info as i  where  $where_base ";
+        $sql['count_p']  = "SELECT  count(*) as c
+          FROM
+           (".$from['count_p']." ) as p_info
+        ";
+        $datas['count_p'] = $connection->createCommand($sql['count_p'])->query()->readAll();
 
 
+
+
+        //从info表取得非空座位的乘搭的司机数
+        $from['count_c'] = "SELECT carownid FROM info as i  where  $where_base AND love_wall_ID is Null   GROUP BY carownid  , time";
+        $sql['count_c']  = "SELECT  count(*) as c  FROM  (".$from['count_c']." ) as p_info ";
+        $datas['count_c'] = $connection->createCommand($sql['count_c'])->query()->readAll();
+
+
+
+
+        //从love_wall表取得非空座位的乘搭的司机数
+        $from['count_c1'] = "SELECT love_wall_ID , (select count(infoid) from info as i where i.love_wall_ID = t.love_wall_ID AND i.status <> 2 ) as pa_num FROM love_wall as t  where  t.status <> 2  AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."   ";
+        $sql['count_c1']  = "SELECT  count(*) as c   FROM (".$from['count_c1']." ) as ta   WHERE pa_num > 0   ";
+        $datas['count_c1'] = $connection->createCommand($sql['count_c1'])->query()->readAll();
+
+
+        $listItem = array(
+          "o"=> $datas['count_c'][0]['c']+$datas['count_c1'][0]['c'],
+          "p"=> $datas['count_p'][0]['c'],
+          "month"=> $value,
+        );
+        $listItem['carbon'] = $listItem['p']*7.6*2.3/10;
+        $listData[] =  $listItem;
+        $cacheExpiration = strtotime($value) >= strtotime(date('Y-m',strtotime("now"))) ? 900 : 3600*24*60 ;
+        Yii::app()->cache->set($cacheDatasKey, $listItem ,$cacheExpiration);
+
+      }
+
+      // exit;
+    }
+    $returnData= array(
+      "lists"=> $listData,
+      "months"=> $months
+    );
+    $this->ajaxReturn(0,$returnData,"success");
+  }
+
+
+  /**
+   * 取得月排名
+   */
+   public function actionGet_month_ranking(){
+     $type = $this->iGet('type');
+     $month       = $this->sRequest('month');
+     $recache     = $this->sRequest('recache');
+     $month_current   = date("Y-m");
+
+     $yearMonth   = empty($month) ? date("Y-m",strtotime("$month_current -1 month")): $month;
+     $period = $this->getMonthPeriod($yearMonth.'-01',"YmdHi");
+     $connection = Yii::app()->carpoolDb;
+
+     switch ($type) {
+       case 0:  //取得司机排名。
+          $where = " t.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."";
+          $tableAll = " SELECT carownid, passengerid ,time , MAX(infoid) as infoid FROM info as t WHERE $where GROUP BY carownid , time, passengerid "; //取得当月所有，去除拼同司机同时间同乘客的数据。
+          $limit = " LIMIT 50 ";
+          $sql = "SELECT u.uid, u.name, u.loginname , u.companyname , count(ta.passengerid) as num FROM ( $tableAll ) as ta LEFT JOIN user as u on ta.carownid =  u.uid  GROUP BY  carownid   ORDER BY num DESC $limit";
+          $datas = $connection->createCommand($sql)->query()->readAll();
+          $returnData= array(
+            "lists"=> $datas,
+            "month"=> $yearMonth
+          );
+          return $this->ajaxReturn(0,$returnData,"success");
+
+         break;
+       case 1: //取得乘客排名
+         $where = " t.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."";
+         $tableAll = " SELECT   passengerid ,time , MAX(infoid) as infoid , MAX(carownid) as carownid FROM info as t WHERE $where GROUP BY   time, passengerid "; //取得当月所有，去除拼同司机同时间同乘客的数据。
+         $limit = " LIMIT 50 ";
+         $sql = "SELECT u.uid, u.name, u.loginname , u.companyname , count(ta.infoid) as num  FROM ( $tableAll ) as ta LEFT JOIN user as u on ta.passengerid =  u.uid  GROUP BY  passengerid   ORDER BY num DESC $limit";
+         $datas = $connection->createCommand($sql)->query()->readAll();
+         $returnData= array(
+           "lists"=> $datas,
+           "month"=> $yearMonth
+         );
+         return $this->ajaxReturn(0,$returnData,"success");
+         break;
+
+       default:
+         # code...
+         break;
+     }
+   }
+
+   /**
+    * 取得今日拼车清单。
+    */
+    public function actionGet_today_info(){
+      $today    = date("Y-m-d");
+      $tomorrow = date("Y-m-d",strtotime("$today +1 day"));
+      $period = array(date("Ymd0000",strtotime($today)),date("Ymd0000",strtotime($tomorrow)));
+      $connection = Yii::app()->carpoolDb;
+      // var_dump($period);
+      $where = " i.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND i.time >=  ".$period[0]." AND i.time < ".$period[1]."";
+      $whereIds = "SELECT MIN(ii.infoid) FROM  (select * from info as i where $where ) as ii GROUP BY ii.passengerid , ii.time    ";
+
+      $sql = "SELECT i.infoid, i.carownid, i.passengerid, c.name as name_o, c.companyname as companyname_o,c.carnumber, p.name as name_p, p.companyname as companyname_p, i.time
+        FROM info as i
+        LEFT JOIN user AS c ON c.uid = i.carownid
+        LEFT JOIN user AS p ON p.uid = i.passengerid
+        WHERE   i.infoid in($whereIds)
+        ORDER BY c.companyname DESC,i.carownid DESC
+      ";
+      $datas = $connection->createCommand($sql)->query()->readAll();
+      if($datas!==false){
+        foreach ($datas as $key => $value) {
+          $datas[$key]['time'] = date("H:i",strtotime($value['time']));
+          $datas[$key]['date_time'] = date("Y-m-d H:i",strtotime($value['time']));
+        }
+        return $this->ajaxReturn(0,['lists'=>$datas],"success");
+      }else{
+        return $this->ajaxReturn(-1,[],"fail");
+      }
+
+
+   }
+
+
+   /*写入临时表*/
+   public function addTemp($lists){
+     $connection = Yii::app()->carpoolDb;
+     echo count($lists);
+     exit;
+     foreach ($lists as $key => $value) {
+       $str = json_encode(["pick"=>$value['monthScores']["pick"],"picked"=>$value['monthScores']["picked"]]);
+       $time = date("Y-m-d H:i:s");
+       $sql = "INSERT INTO temp_carpool_score_201805
+       (carpool_uid, loginname, name , balance ,extra, create_time)
+       VALUES
+       ('".$value['uid']."', '".$value['loginname']."', '".$value['name']."' , '".$value['monthScores']['total']."' , '".$str."','".$time."');
+       ";
+       $command=$connection->createCommand($sql);
+       $command->execute();
+     }
+
+
+   }
 
 
 }
