@@ -91,6 +91,17 @@ class MytripController extends CarpoolBaseController {
     public function actionHistory(){
       $connection = Yii::app()->carpoolDb;
       $uid = $this->userBaseInfo->uid;
+      $userData = $this->getUser();
+      $whereUser = " a.carownid=$uid OR a.passengerid=$uid ";
+      $extra_info = json_decode($userData['extra_info'],true);
+      $merge_ids = isset($extra_info['merge_id']) && is_array($extra_info['merge_id'])  ? $extra_info['merge_id'] : [];
+
+
+      if(count($merge_ids)>0){
+        foreach ($merge_ids as $key => $value) {
+          $whereUser .= " OR a.carownid=$value OR a.passengerid=$value  ";
+        }
+      }
       // $sql = "SELECT * FROM info AS i WHERE passengerid = uid OR carownid = uid UNION ALL select * from wall as w where car"
 
       // 从info表取得数据
@@ -103,7 +114,7 @@ class MytripController extends CarpoolBaseController {
       FROM
         info AS a
       WHERE
-        (a.carownid=$uid OR a.passengerid=$uid)
+        ( $whereUser )
         AND status <>2
         AND (a.love_wall_ID is null OR  a.love_wall_ID not in (select lw.love_wall_ID  from love_wall AS lw where lw.carownid=$uid and lw.status<>2 ) )
         ORDER BY a.time desc";
@@ -167,6 +178,17 @@ class MytripController extends CarpoolBaseController {
       // var_dump($datas);exit;
       foreach ($datas as $key => $value) {
         $datas[$key]['time'] = date('Y-m-d H:i',strtotime($value['time'].'00'));
+        if(isset($value['passenger_uid']) && in_array($value['passenger_uid'],$merge_ids)){
+          $datas[$key]['passenger_uid'] = $uid;
+          $datas[$key]['passengerid'] = $uid;
+          $datas[$key]['passenger_name'] = $userData['name'];
+        }
+        if(isset($value['driver_uid']) && in_array($value['driver_uid'],$merge_ids)){
+          $datas[$key]['driver_uid'] = $uid;
+          $datas[$key]['carownid'] = $uid;
+          $datas[$key]['driver_name'] = $userData['name'];
+
+        }
 
       }
 
@@ -466,10 +488,10 @@ class MytripController extends CarpoolBaseController {
             $createAddress[0]['addressid'] = $createID;
             $datas['startpid'] = $createID;
           }else{
-            $this->ajaxReturn(-1,[],"起点不能为空");
+            $this->ajaxReturn(-1,[],Yii::t("carpool","The point of departure must not be empty"));
           }
         }else{
-          $this->ajaxReturn(-1,[],"起点不能为空");
+          $this->ajaxReturn(-1,[],Yii::t("carpool","The point of departure must not be empty"));
         }
       }
 
@@ -486,11 +508,11 @@ class MytripController extends CarpoolBaseController {
             $createAddress[1]['addressid'] = $createID;
             $datas['endpid'] = $createID;
           }else{
-            $this->ajaxReturn(-1,[],"终点不能为空");
+            $this->ajaxReturn(-1,[],Yii::t("carpool","The destination cannot be empty"));
             // $this->error('终点不能为空');
           }
         }else{
-          $this->ajaxReturn(-1,[],"终点不能为空");
+          $this->ajaxReturn(-1,[],Yii::t("carpool","The destination cannot be empty"));
           // $this->error('终点不能为空');
         }
       }
@@ -498,10 +520,9 @@ class MytripController extends CarpoolBaseController {
       //要提交的行程时间
       $datas['time'] = date('YmdHi',strtotime($datetime.":00"));
       if(date('YmdHi',time()) > $datas['time']){
-        $this->ajaxReturn(-1,[],"出发时间已经过了<br /> 请重选时间");
+        $this->ajaxReturn(-1,[],Yii::t("carpool","The departure time has passed. Please select the time again"));
         // $this->error("出发时间已经过了<br /> 请重选时间");
       }
-
       //计算前后范围内有没有重复行程
       $connection = Yii::app()->carpoolDb;
       $sql['info'] = "SELECT * FROM info as t
@@ -513,7 +534,7 @@ class MytripController extends CarpoolBaseController {
       ";
       $checkData['info'] = $connection->createCommand($sql['info'])->query()->readAll();
       if(count($checkData['info'])>0){
-        $this->ajaxReturn(-1,[],"您在<br />".date('Y-m-d H:i',strtotime($checkData['info'][0]['time'].'00'))."<br />已有一趟行程，<br />在相近时间内请勿重复发布");
+        $this->ajaxReturn(-1,[],Yii::t("carpool","You have already made one trip at {time}, should not be published twice within the same time",["{time}"=>date('Y-m-d H:i',strtotime($checkData['info'][0]['time'].'00'))]));
       };
 
       $sql['wall'] = "SELECT * FROM love_wall as t
@@ -525,7 +546,7 @@ class MytripController extends CarpoolBaseController {
       ";
       $checkData['wall'] = $connection->createCommand($sql['wall'])->query()->readAll();
       if(count($checkData['wall'])>0){
-        $this->ajaxReturn(-1,[],"您在<br />".date('Y-m-d H:i',strtotime($checkData['wall'][0]['time'].'00'))."<br />已有一趟行程，<br />在相近时间内请勿重复发布");
+        $this->ajaxReturn(-1,[],Yii::t("carpool","You have already made one trip at {time}, should not be published twice within the same time",["{time}"=>date('Y-m-d H:i',strtotime($checkData['wall'][0]['time'].'00'))]));
       };
 
 
@@ -573,7 +594,7 @@ class MytripController extends CarpoolBaseController {
      * @return array             返回处理后的数组数据
      */
     private function formatListDatas($datas,$fields='*',$primaryKey = 'infoid',$from='info'){
-      $uArray = array('name'=>'','phone'=>'','loginname'=>'','Department'=>'','carnumber'=>'','uid'=>'','imgpath'=>'');
+      $uArray = array('name'=>'','phone'=>'','loginname'=>'','Department'=>'','carnumber'=>'','uid'=>'','imgpath'=>'','mobile'=>'');
       if($from == 'info'){
         $uid = $this->userBaseInfo->uid;
       }
@@ -602,8 +623,12 @@ class MytripController extends CarpoolBaseController {
         $lists[$key]['end_info']        = $value->endpid ? json_decode(CJSON::encode($value->end),true) :array('addressname'=>'-') ;
         if($from=='info'){
           $lists[$key]['show_owner']      = $uid == $value->passengerid &&  $value->carownid  ?  1 : 0;
-          $lists[$key]['passenger_info']  = $value->passengerid ? array('name'=>$value->user->name,'phone'=>$value->user->phone,'loginname'=>$value->user->loginname,'Department'=>$value->user->Department,'carnumber'=>$value->user->carnumber,'uid'=>$value->user->uid,'imgpath'=>$value->user->imgpath) : $uArray ;
-          $lists[$key]['owner_info']      = $value->carownid    ? array('name'=>$value->carowner->name,'phone'=>$value->carowner->phone,'loginname'=>$value->carowner->loginname,'Department'=>$value->carowner->Department,'carnumber'=>$value->carowner->carnumber,'uid'=>$value->carowner->uid,'imgpath'=>$value->carowner->imgpath): $uArray;
+          $lists[$key]['passenger_info']  = $value->passengerid ? array('name'=>$value->user->name,'phone'=>$value->user->phone,'loginname'=>$value->user->loginname,
+                                                                        'Department'=>$value->user->Department,'carnumber'=>$value->user->carnumber,'uid'=>$value->user->uid,
+                                                                        'imgpath'=>$value->user->imgpath,'mobile'=>$value->user->mobile) : $uArray ;
+          $lists[$key]['owner_info']      = $value->carownid    ? array('name'=>$value->carowner->name,'phone'=>$value->carowner->phone,'loginname'=>$value->carowner->loginname,
+                                                                        'Department'=>$value->carowner->Department,'carnumber'=>$value->carowner->carnumber,'uid'=>$value->carowner->uid,
+                                                                        'imgpath'=>$value->carowner->imgpath,'mobile'=>$value->carowner->mobile): $uArray;
           // $lists[$key]['passenger_info'] =  $value['passengerid'] ?  CP_User::model()->getDataById($value['passengerid'],['uid','name','loginname','deptid','phone']):array('name'=>'-');
 
         }

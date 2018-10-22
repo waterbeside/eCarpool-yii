@@ -780,7 +780,7 @@ class StatementController extends BaseController {
     $nums               = $this->sRequest('nums');
     $yearMonth_current = empty($month_current) ? date("Y-m") : $month_current;
 
-    $nums_month = $nums ? $nums : 18;
+    $nums_month = $nums ? $nums : 25;
     $connection = Yii::app()->carpoolDb;
 
     $months = array();
@@ -790,11 +790,15 @@ class StatementController extends BaseController {
     }
 
     $listData = array();
+    $totalData = [
+      'passengers'=>0,
+      'carbon'=>0,
+    ];
     foreach ($months as $key => $value) {
       $cacheDatasKey= "statement_".$value."_counts";
       $cacheDatas = Yii::app()->cache->get($cacheDatasKey);
 
-      if($cacheDatas && !$recache){
+      if($cacheDatas && !$recache  ){
         $listData[] = $cacheDatas;
       }else{
 
@@ -809,8 +813,6 @@ class StatementController extends BaseController {
            (".$from['count_p']." ) as p_info
         ";
         $datas['count_p'] = $connection->createCommand($sql['count_p'])->query()->readAll();
-
-
 
 
         //从info表取得非空座位的乘搭的司机数
@@ -829,11 +831,12 @@ class StatementController extends BaseController {
 
         $listItem = array(
           "o"=> $datas['count_c'][0]['c']+$datas['count_c1'][0]['c'],
-          "p"=> $datas['count_p'][0]['c'],
+          "p"=> $datas['count_p'][0]['c'] + 0,
           "month"=> $value,
         );
         $listItem['carbon'] = $listItem['p']*7.6*2.3/10;
         $listData[] =  $listItem;
+        $totalData['passengers'] +=   $datas['count_p'][0]['c'];
         $cacheExpiration = strtotime($value) >= strtotime(date('Y-m',strtotime("now"))) ? 900 : 3600*24*60 ;
         Yii::app()->cache->set($cacheDatasKey, $listItem ,$cacheExpiration);
 
@@ -841,9 +844,11 @@ class StatementController extends BaseController {
 
       // exit;
     }
+    $totalData['carbon'] = $totalData['passengers']*7.6*2.3/10;
     $returnData= array(
       "lists"=> $listData,
-      "months"=> $months
+      "months"=> $months,
+      "total"=> $totalData
     );
     $this->ajaxReturn(0,$returnData,"success");
   }

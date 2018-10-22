@@ -7,6 +7,7 @@ $config = array(
 	'defaultController' => 'carpool/publics/index' ,
 	'basePath'=>dirname(__FILE__) . DIRECTORY_SEPARATOR . '..',
 	'name'=>'carpool china',
+	// 'language'=>'en',
 	'language'=>'zh_cn',
 	// preloading 'log' component
 	'preload'=>array(
@@ -35,7 +36,7 @@ $config = array(
 			'allowAutoLogin'=>true,
 		),*/
 
-		
+
 
 
 		'urlManager'=>array(
@@ -98,7 +99,7 @@ $config = array(
 	),
 
 	'params'=>array(
-
+		'languages'=>['en', 'zh_cn', 'zh_tw','vi'],
 
 	),
 );

@@ -57,13 +57,15 @@ class InfoController extends  CarpoolBaseController {
       'params' =>  $page->params,
     );
 
+
     if(isset($_GET[$page->pageVar]) && $_GET[$page->pageVar] > $page->getPageCount()){
       $results = array();
-      $this->ajaxReturn(20002,$data,'No data');
+      $this->ajaxReturn(20002,['lists'=>$results,'page'=>$pageReturn],'No data');
 
     }else{
       $results = $model->findAll($criteria);
     }
+
 
 
     $lists = array();
@@ -102,7 +104,7 @@ class InfoController extends  CarpoolBaseController {
     $criteria->addCondition('love_wall_ID = '.$wallid);
     $criteria->addCondition('status <> 2');
     $selectArray_info = array('infoid','type','status','carownid');
-    $selectArray_user = array('Department','loginname','phone','imgpath','name','uid');
+    $selectArray_user = array('Department','loginname','phone','imgpath','name','uid','mobile');
     $criteria->order = 'time asc , subtime asc, infoid asc';
 
     $criteria->with = 'user';
@@ -148,8 +150,8 @@ class InfoController extends  CarpoolBaseController {
     $data['time_format']  = date('Y-m-d H:i',$data['time']);
     $data['start_info']   = $data['startpid'] ?   Address::model()->getDataById($data['startpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
     $data['end_info']     = $data['endpid']   ?   Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
-    $data['passenger_info']   = $data['passengerid'] ?   CP_User::model()->getDataById($data['passengerid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath']):array('name'=>'-');
-    $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath']):array('name'=>'-');
+    $data['passenger_info']   = $data['passengerid'] ?   CP_User::model()->getDataById($data['passengerid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath','mobile']):array('name'=>'-');
+    $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath','mobile']):array('name'=>'-');
 
     $data['uid']          = $this->userBaseInfo->uid;
     // return $this->success('加载成功','',$data);
@@ -307,17 +309,17 @@ class InfoController extends  CarpoolBaseController {
       $model = Info::model()->findByPk($id);
       $uid = $this->userBaseInfo->uid;
       if(!$model){
-        $this->ajaxReturn(-1,[],'无此数据');
+        $this->ajaxReturn(-1,[],Yii::t("carpool","Without this data"));
         // return $this->error('无此数据');
       }
       if($uid == $model->passengerid ){
-        $this->ajaxReturn(-1,[],'你不能自己搭自己');
+        $this->ajaxReturn(-1,[],Yii::t("carpool","You can't make your own"));
         // $this->ajaxReturn(-1,[],'你不能自己搭自己');
 
         // return $this->error('你不能自己搭自己');
       }
       if($model->status > 0 ){
-        $this->ajaxReturn(-1,[],'此需求已被人搭载或被取消');
+        $this->ajaxReturn(-1,[],Yii::t("carpool","This requirement has been picked up or cancelled"));
 
         // return $this->error('此需求已被人搭载或被取消');
       }

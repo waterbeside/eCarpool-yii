@@ -10,6 +10,8 @@ class BaseController extends CController {
 	public $userBaseInfo;
 	public $userJwt;
 	private $_user;
+	public $language  = 'zh-cn';
+	public $language_l = [];
 
 	public function init() {
 
@@ -19,6 +21,8 @@ class BaseController extends CController {
 		if($_SERVER['REQUEST_METHOD']=='OPTIONS'){
 			exit;
 		}
+		$this->language = $this->getLang();
+		$this->setLanguage($this->language);
 	}
 
 	/**
@@ -85,6 +89,61 @@ class BaseController extends CController {
 			}
 		}
 	}
+
+	public function getLang(){
+
+      $lang_s =  $this->sRequest('_language');
+			$lang_s = $lang_s ? $lang_s : (isset($_SERVER['HTTP_ACCEPT_LANG'])?$_SERVER['HTTP_ACCEPT_LANG']:'');
+      $lang_s = $lang_s ? $lang_s : (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])?$_SERVER['HTTP_ACCEPT_LANGUAGE']:'');
+      $lang_l = $this->formatAcceptLang($lang_s);
+      $this->language_l = $lang_l;
+      return $lang_l[0] == 'zh' ? ( isset($lang_l[1]) ? $this->formatZhLang($lang_l[1],'zh-cn') : 'zh-cn') : $this->formatZhLang($lang_l[0]);
+    }
+
+
+    public function formatZhLang($language,$default = null) {
+      if($language == 'zh-hant-hk'){
+        return 'zh-hk';
+      }
+      if($language == 'zh-hant-tw'){
+        return 'zh-tw';
+      }
+      if($language == 'zh-hans'){
+        return 'zh-cn';
+      }
+      if(strpos($language,'zh-hant') !== false  ){
+        return 'zh-hk';
+      }
+      if(strpos($language,'zh-hans') !== false  ){
+        return 'zh-cn';
+      }
+      return $default ? $default : $language  ;
+    }
+
+    /**
+     */
+  	public function formatAcceptLang($language) {
+      $lang_l = explode(',',$language);
+      $lang_format_list = [];
+      $q_array = [];
+
+      foreach ($lang_l as $key => $value) {
+        $temp_arr = explode(';',$value);
+        $q = isset($temp_arr[1]) ? $temp_arr[1] : 1;
+        $q_array[]  = $q;
+        $lang_format_list[$key] = ['lang'=>$temp_arr[0],'q'=>$q];
+      }
+
+      array_multisort($q_array, SORT_DESC,  $lang_format_list);
+      $lang = [];
+      foreach ($lang_format_list as $key => $value) {
+        $lang[] = strtolower(trim($value['lang']));
+      }
+      $lang = array_unique($lang);
+      return $lang;
+  	}
+
+
 
 	public function getUser() {
 		if ($this->_user !== null) {
