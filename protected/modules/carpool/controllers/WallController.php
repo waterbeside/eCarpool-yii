@@ -89,10 +89,9 @@ class WallController extends  CarpoolBaseController {
       'params' =>  $page->params,
     );
 
-
     if(isset($_GET[$page->pageVar]) && $_GET[$page->pageVar] > $page->getPageCount()){
       $results = array();
-      $this->ajaxReturn(20002,$data,'No data');
+      $this->ajaxReturn(20002,['lists'=>$results,'page'=>$pageReturn],'No data');
     }else{
       $results = $model->findAll($criteria);
     }
@@ -126,7 +125,9 @@ class WallController extends  CarpoolBaseController {
       // $lists[$key]['owner_info'] =  $value['carownid'] ?  CP_User::model()->getDataById($value['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber']):array('name'=>'-');
       $lists[$key]['start_info']    = $value->start ? json_decode(CJSON::encode($value->start),true):["addressid"=>NULL,"addressname"=>"-"];
       $lists[$key]['end_info']      = $value->end ? json_decode(CJSON::encode($value->end),true):["addressid"=>NULL,"addressname"=>"-"];
-      $lists[$key]['owner_info']    = array('name'=>$value->user->name,'loginname'=>$value->user->loginname,'Department'=>$value->user->Department,'carnumber'=>$value->user->carnumber,'uid'=>$value->user->uid,'imgpath'=>$value->user->imgpath,'phone'=>$value->user->phone);
+      $lists[$key]['owner_info']    = array('name'=>$value->user->name,'loginname'=>$value->user->loginname,
+                                        'Department'=>$value->user->Department,'carnumber'=>$value->user->carnumber,'uid'=>$value->user->uid,
+                                        'imgpath'=>$value->user->imgpath,'phone'=>$value->user->phone,'mobile'=>$value->user->mobile);
 
       //取点赞数
       $lists[$key]['like_count']    = WallLike::model()->count('love_wall_ID='.$value['love_wall_ID']);
@@ -165,7 +166,7 @@ class WallController extends  CarpoolBaseController {
     $data['time_format']  = date('Y-m-d H:i',$data['time']);
     $data['start_info']   = $data['startpid'] ?   Address::model()->getDataById($data['startpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
     $data['end_info']     = $data['endpid']   ?   Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
-    $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath']):array('name'=>'-');
+    $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath','mobile']):array('name'=>'-');
 
     $data['took_count']       = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2'); //取已坐数
     $data['took_count_all']   = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status <> 2'); //取已坐数

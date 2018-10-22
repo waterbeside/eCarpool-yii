@@ -154,8 +154,8 @@ class Info extends CActiveRecord {
 	  // NOTE: you may need to adjust the relation name and the related
 	  // class name for the relations automatically generated below.
 		return array(
-				'user' => array(self::BELONGS_TO, 'CP_User', '' ,'on'=>'t.passengerid = u.uid','alias'=>'u','select'=>'name,loginname,phone,deptid,Department,imgpath'),
-	      'carowner' => array(self::BELONGS_TO, 'CP_User', '' ,'on'=>'t.carownid = c.uid','alias'=>'c','select'=>'name,loginname,phone,deptid,Department,carnumber,imgpath'),
+				'user' => array(self::BELONGS_TO, 'CP_User', '' ,'on'=>'t.passengerid = u.uid','alias'=>'u','select'=>'name,loginname,phone,deptid,Department,imgpath,mobile'),
+	      'carowner' => array(self::BELONGS_TO, 'CP_User', '' ,'on'=>'t.carownid = c.uid','alias'=>'c','select'=>'name,loginname,phone,deptid,Department,carnumber,imgpath,mobile'),
 				'start' => array(self::BELONGS_TO, 'Address', '' ,'on'=>'t.startpid = s.addressid','alias'=>'s','select'=>'addressid,addressname,latitude,longtitude'),
 				'end' => array(self::BELONGS_TO, 'Address', '' ,'on'=>'t.endpid = e.addressid','alias'=>'e','select'=>'addressid,addressname,latitude,longtitude'),
 	  );
