@@ -19,8 +19,9 @@ class AddressController extends  CarpoolBaseController {
     if(empty($data)){
       return false;
     }
+    $lng = isset($data['longitude']) ? $data['longitude'] : $data['longtitude'];
     //如果id为空，通过经纬度查找id.
-    $address =  Address::model()->getDataByCoord($data['longtitude'],$data['latitude']);
+    $address =  Address::model()->getDataByCoord($lng,$data['latitude']);
 
     if(!$address ){
       //如果已有地址中查找不到，则自动创建一个
@@ -53,9 +54,9 @@ class AddressController extends  CarpoolBaseController {
 
     $address->company_id  = $data['company_id'];
     $address->latitude    = $data['latitude'];
-    $address->longtitude  = $data['longtitude'];
+    $address->longtitude  = $data['longitude'] ? $data['longitude'] : $data['longtitude'] ;
     $address->addressname = $data['name'];
-    $address->city        = $data['city'] ? $data['city'] : 'gaoming';
+    $address->city        = $data['city'] ? $data['city'] : '-';
     $address->address_type = 2;
     if($address->save()>0){
         return $address->primaryKey;
@@ -76,7 +77,7 @@ class AddressController extends  CarpoolBaseController {
     if(empty($data['name'])){
       $this->ajaxReturn(-10001,[],'站点名称不能为空');
     }
-    if(empty($data['latitude']) || empty($data['longtitude']) ){
+    if(empty($data['latitude']) || (empty($data['longitude']) && empty($data['longtitude'])  )){
       // $this->error('网络出错');
       $this->ajaxReturn(500,[],'网络出错');
 
@@ -95,11 +96,17 @@ class AddressController extends  CarpoolBaseController {
     $uid = $this->userBaseInfo->uid;
 		$command = Yii::app()->carpoolDb->createCommand('call get_my_address('.$uid.')');
 		$data = $command->query()->readAll();
-    $returnData  = array(
-      'lists' => $data,
-      'total'=> count($data)
-    );
+
     if($data){
+      foreach ($data as $key => $value) {
+        $data[$key]['longitude'] = $value['longtitude'];
+        $data[$key]['addressid'] = intval($value['addressid']);
+        unset($data[$key]['longtitude']);
+      }
+      $returnData  = array(
+        'lists' => $data,
+        'total'=> count($data)
+      );
       $this->ajaxReturn(0,$returnData,"success");
       // $this->success('加载成功','',$returnData);
     }else{

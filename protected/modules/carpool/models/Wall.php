@@ -23,9 +23,9 @@ class Wall extends CActiveRecord {
   	// NOTE: you should only define rules for those attributes that
   	// will receive user inputs.
   	return array(
-  		array('time,startpid, endpid','required'),
+  		// array('time,startpid, endpid','required'),
   		array('startpid, endpid','numerical'),
-      array('startpid,startname,endpid,endname,time,subtime,type,status,carownid,seat_count,remarks,cancel_time,company_id,update_time,distance','safe'),
+      array('startpid,startname,endpid,endname,time,subtime,type,status,carownid,seat_count,remarks,cancel_time,company_id,update_time,distance,start_latlng,end_latlng','safe'),
     );
   }
 

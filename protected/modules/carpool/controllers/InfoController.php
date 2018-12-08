@@ -96,7 +96,7 @@ class InfoController extends  CarpoolBaseController {
   public function actionGet_passengers(){
     $wallid = $this->iGet('wallid');
     if(!$wallid){
-      $this->ajaxReturn(0,[],"Lost id");
+      $this->ajaxReturn(-1,[],"Lost id");
       // $this->error('Lost id');
     }
     $model = new Info();
@@ -136,20 +136,55 @@ class InfoController extends  CarpoolBaseController {
       $this->ajaxReturn(-1,[],'lost id');
       // return $this->error('lost id');
     }
-    $modal_data = Info::model()->findByPk($id);
+    // $modal_data = Info::model()->findByPk($id);
+
+    $connection = Yii::app()->carpoolDb;
+    $fields = "infoid,carownid,passengerid,
+    startpid,start_gid,startname,  x(start_latlng) as start_lng , y(start_latlng) as start_lat ,
+    endpid,end_gid,endname, x(end_latlng) as end_lng , y(end_latlng) as end_lat ,
+    time,love_wall_ID,subtime,status,type,distance,cancel_time,map_type";
+    $sql = 'select '.$fields.'  from info where  infoid =  '.$id;
+    $modal_data = $connection->createCommand($sql)->query()->readAll();
+
     if(!$modal_data){
       $this->ajaxReturn(-1,[],'数据不存在');
       // return $this->error('数据不存在');
     }
-    if($modal_data->status > 1){
+
+    $data                 = $modal_data[0]; //把對像轉為數組
+
+    if($data['status'] > 1){
       // $this->ajaxReturn(-1,[],'本行程已取消或完结');
       // return $this->error('本行程已取消或完结');
     }
-    $data                 = json_decode(CJSON::encode($modal_data),true); //把對像轉為數組
+    // $data                 = json_decode(CJSON::encode($modal_data),true); //把對像轉為數組
     $data['time']         = strtotime($data['time'].'00');
     $data['time_format']  = date('Y-m-d H:i',$data['time']);
-    $data['start_info']   = $data['startpid'] ?   Address::model()->getDataById($data['startpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
-    $data['end_info']     = $data['endpid']   ?   Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
+    if(isset($data['startpid']) && is_numeric($data['startpid']) &&  $data['startpid'] > 0){
+      $data['start_info']   =    Address::model()->getDataById($data['startpid'],['addressid','addressname','latitude','longtitude','city']);
+    }else{
+      $data['start_info']  = [
+        'addressid'   => $data['startpid'],
+        'addressname' => $data['startname'],
+        'latitude' =>    $data['start_lat'],
+        'longtitude' =>    $data['start_lng'],
+        'longitude' =>    $data['start_lng'],
+        'city' => '-',
+      ];
+    }
+
+    if(isset($data['endpid']) && is_numeric($data['endpid']) &&  $data['endpid'] > 0){
+      $data['end_info']   =    Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']);
+    }else{
+      $data['end_info']  = [
+        'addressid'   => $data['endpid'],
+        'addressname' => $data['endname'],
+        'latitude' =>    $data['end_lat'],
+        'longtitude' =>    $data['end_lng'],
+        'longitude' =>    $data['end_lng'],
+        'city' => '-',
+      ];
+    }
     $data['passenger_info']   = $data['passengerid'] ?   CP_User::model()->getDataById($data['passengerid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath','mobile']):array('name'=>'-');
     $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath','mobile']):array('name'=>'-');
 

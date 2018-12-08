@@ -23,9 +23,9 @@ class Info extends CActiveRecord {
   	// NOTE: you should only define rules for those attributes that
   	// will receive user inputs.
   	return array(
-  		array('time,startpid, endpid','required'),
+  		// array('time,startpid, endpid','required'),
   		array('startpid, endpid','numerical'),
-      array('infoid,startpid,startname,endpid,endname,time,subtime,type,status,carownid,passengerid,love_wall_ID,remarks,cancel_user_id,cancel_time,company_id,distance','safe'),
+      // array('infoid,startpid,startname,endpid,endname,time,subtime,type,status,carownid,passengerid,love_wall_ID,remarks,cancel_user_id,cancel_time,company_id,distance,start_latlng,end_latlng,start_lat,start_end','safe'),
     );
   }
 

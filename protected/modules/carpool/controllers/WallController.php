@@ -152,20 +152,53 @@ class WallController extends  CarpoolBaseController {
       $this->ajaxReturn(-1,[],"lost id");
       // return $this->error('lost id');
     }
-    $modal_data = Wall::model()->findByPk($id);
+    $connection = Yii::app()->carpoolDb;
+
+    $fields = "love_wall_ID,carownid,
+    startpid,start_gid,startname,  x(start_latlng) as start_lng , y(start_latlng) as start_lat ,
+    endpid,end_gid,endname, x(end_latlng) as end_lng , y(end_latlng) as end_lat ,
+    time,seat_count,subtime,status,type,distance,map_type";
+    $sql = 'select '.$fields.'  from love_wall where  love_wall_ID =  '.$id;
+    $modal_data = $connection->createCommand($sql)->query()->readAll();
+    // $modal_data = Wall::model()->findByPk($id);
     if(!$modal_data){
       $this->ajaxReturn(-1,[],"数据不存在");
       // return $this->error('数据不存在');
     }
-    if($modal_data->status > 1){
+    // $data                 = json_decode(CJSON::encode($modal_data),true); //把對像轉為數組
+    $data                 = $modal_data[0]; //把對像轉為數組
+    if($data['status'] > 1){
       // $this->ajaxReturn(-1,[],"本行程已取消或完结");
       // return $this->error('本行程已取消或完结');
     }
-    $data                 = json_decode(CJSON::encode($modal_data),true); //把對像轉為數組
+
     $data['time']         = strtotime($data['time'].'00');
     $data['time_format']  = date('Y-m-d H:i',$data['time']);
-    $data['start_info']   = $data['startpid'] ?   Address::model()->getDataById($data['startpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
-    $data['end_info']     = $data['endpid']   ?   Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
+    if(isset($data['startpid']) && is_numeric($data['startpid']) &&  $data['startpid'] > 0){
+      $data['start_info']   =    Address::model()->getDataById($data['startpid'],['addressid','addressname','latitude','longtitude','city']);
+    }else{
+      $data['start_info']  = [
+        'addressid'   => $data['startpid'],
+        'addressname' => $data['startname'],
+        'latitude' =>    $data['start_lat'],
+        'longtitude' =>    $data['start_lng'],
+        'longitude' =>    $data['start_lng'],
+        'city' => '-',
+      ];
+    }
+    if(isset($data['endpid']) && is_numeric($data['endpid']) &&  $data['endpid'] > 0){
+      $data['end_info']   =    Address::model()->getDataById($data['endpid'],['addressid','addressname','latitude','longtitude','city']);
+    }else{
+      $data['end_info']  = [
+        'addressid'   => $data['endpid'],
+        'addressname' => $data['endname'],
+        'latitude' =>    $data['end_lat'],
+        'longtitude' =>    $data['end_lng'],
+        'longitude' =>    $data['end_lng'],
+        'city' => '-',
+      ];
+    }
+
     $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath','mobile']):array('name'=>'-');
 
     $data['took_count']       = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2'); //取已坐数
@@ -173,7 +206,6 @@ class WallController extends  CarpoolBaseController {
     $data['hasTake']          = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status < 2 and passengerid ='.$uid.''); //查看是否已搭过此车主的车
     $data['hasTake_finish']   = Info::model()->count('love_wall_ID='.$data['love_wall_ID'].' and status = 3 and passengerid ='.$uid.''); //查看是否已搭过此车主的车
     $data['uid']              = $uid;
-
 
 
     return $this->ajaxReturn(0,$data,'加载成功');

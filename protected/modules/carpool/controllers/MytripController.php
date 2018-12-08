@@ -13,8 +13,39 @@ class MytripController extends CarpoolBaseController {
 
         $uid = $this->userBaseInfo->uid;
         $limit = $this->iRequest('limit');
+
+
         /* 读取 info 数据表 */
-        $model_info = new Info();
+
+        $connection = Yii::app()->carpoolDb;
+        $info_field = "infoid,carownid,passengerid,
+        startpid,start_gid,startname,  x(start_latlng) as start_lng , y(start_latlng) as start_lat ,
+        endpid,end_gid,endname, x(end_latlng) as end_lng , y(end_latlng) as end_lat ,
+        time,love_wall_ID,subtime,status,type,distance,cancel_time,map_type,
+        d.name as d_name, d.phone as d_phone, d.loginname as d_loginname, d.Department as d_department,d.imgpath as d_imgpath, d.mobile as d_mobile,d.carnumber as d_carnumber,
+        p.name as p_name, p.phone as p_phone, p.loginname as p_loginname, p.Department as p_department,p.imgpath as p_imgpath, p.mobile as p_mobile,p.carnumber as p_carnumber,
+        s.addressname as s_addressname, s.latitude as s_latitude, s.longtitude as s_longtitude,
+        e.addressname as e_addressname, e.latitude as e_latitude, e.longtitude as e_longtitude
+        ";
+
+        $info_limit = "";
+        $info_where = "WHERE (i.passengerid = $uid OR i.carownid= $uid) AND i.status < 2 ";
+        if(!$limit){
+          $info_where .= "AND i.time >".(date('YmdHi',strtotime("-1 hour")))." AND i.time < 210000000000";
+        }else{
+          $info_limit = " LIMIT $limit";
+        }
+        $info_join = "
+          LEFT JOIN user as d ON carownid = d.uid
+          LEFT JOIN user as p ON passengerid = p.uid
+          LEFT JOIN address as s ON startpid = s.addressid
+          LEFT JOIN address as e ON endpid = e.addressid
+        ";
+        $info_sql = "SELECT $info_field  FROM info as i $info_join $info_where $info_limit";
+
+        $info_data = $connection->createCommand($info_sql)->query()->readAll();
+
+        /*$model_info = new Info();
         $criteria_info = new CDbCriteria();
         $criteria_info->addCondition('t.passengerid='.$uid);
         $criteria_info->addCondition('t.carownid='.$uid,'or');
@@ -28,14 +59,19 @@ class MytripController extends CarpoolBaseController {
         }
 
         // $criteria->addBetweenCondition('time', 1, 4);
+        $criteria_info->select = array('infoid','startpid','endpid','time','subtime','cancel_time','type','status','carownid','passengerid','love_wall_ID',
+        'startname','x(start_latlng) as start_lng','y(start_latlng) as start_lat',
+        'endname','x(end_latlng) as end_lng','y(end_latlng) as end_lat',
+        );
 
-        $criteria_info->select = array('infoid','startpid','endpid','time','subtime','cancel_time','type','status','carownid','passengerid','love_wall_ID');
         $criteria_info->order = 't.time desc , t.subtime desc, infoid desc';
         $criteria_info->with = array('user','carowner','start','end');
         $results = $model_info->findAll($criteria_info);
+        var_dump($info_data);exit;
 
-        // $results = json_decode(CJSON::encode($results),true);
-        $lists_info_o = $this->formatListDatas($results,$criteria_info->select,'infoid','info');
+        // $results = json_decode(CJSON::encode($results),true);*/
+        $lists_info_o = $this->formatListDatas($info_data,"*",'infoid','info');
+        // var_dump($lists_info_o);exit;
 
         //如果我是司机，并且存在love_wall_ID,则取消此条显示，由love_wall表读取；
         $lists_info = array();
@@ -47,6 +83,35 @@ class MytripController extends CarpoolBaseController {
         unset($results);
 
         /* 读取 wall 数据表 */
+        $connection = Yii::app()->carpoolDb;
+        $wall_field = "love_wall_ID,carownid,seat_count
+        startpid,start_gid,startname,  x(start_latlng) as start_lng , y(start_latlng) as start_lat ,
+        endpid,end_gid,endname, x(end_latlng) as end_lng , y(end_latlng) as end_lat ,
+        time,love_wall_ID,subtime,status,type,distance,cancel_time,map_type,
+        d.name as d_name, d.phone as d_phone, d.loginname as d_loginname, d.Department as d_department,d.imgpath as d_imgpath, d.mobile as d_mobile,d.carnumber as d_carnumber,
+        s.addressname as s_addressname, s.latitude as s_latitude, s.longtitude as s_longtitude,
+        e.addressname as e_addressname, e.latitude as e_latitude, e.longtitude as e_longtitude
+        ";
+
+        $wall_limit = "";
+        $wall_where = "WHERE (i.carownid= $uid) AND i.status < 2 ";
+        if(!$limit){
+          $wall_where .= "AND i.time >".(date('YmdHi',strtotime("-1 hour")))." AND i.time < 210000000000";
+        }else{
+          $wall_limit = " LIMIT $limit";
+        }
+        $wall_join = "
+          LEFT JOIN user as d ON carownid = d.uid
+          LEFT JOIN address as s ON startpid = s.addressid
+          LEFT JOIN address as e ON endpid = e.addressid
+        ";
+        $wall_sql = "SELECT $wall_field  FROM love_wall as i $wall_join $wall_where $wall_limit";
+
+        $wall_data = $connection->createCommand($wall_sql)->query()->readAll();
+
+
+
+/*
         $criteria_wall = new CDbCriteria();
         $model_wall = new Wall();
         $criteria_wall->addCondition('carownid='.$uid);
@@ -64,10 +129,11 @@ class MytripController extends CarpoolBaseController {
 
 
         // $results = json_decode(CJSON::encode($results),true);
-        $lists_wall = $this->formatListDatas($results,$criteria_wall->select,'love_wall_ID','wall');
-        unset($results);
 
+*/
+        $lists_wall = $this->formatListDatas($wall_data,"*",'love_wall_ID','wall');
 
+        unset($wall_data);
         //合并两表读出的数据
         $lists = array_merge($lists_info,$lists_wall);
 
@@ -108,6 +174,8 @@ class MytripController extends CarpoolBaseController {
       $viewSql_u1 = "SELECT
         a.infoid, (case when a.love_wall_ID IS NULL  then '0' else a.love_wall_ID end) as  love_wall_ID ,'0' as trip_type,
         a.startpid,a.endpid,a.time,a.status, a.passengerid, a.carownid,
+        a.startname, a.start_gid, x(a.start_latlng) as start_lng , y(a.start_latlng) as start_lat ,
+        a.endname, a.end_gid,  x(a.end_latlng) as end_lng , y(a.end_latlng) as end_lat ,
         '0' as seat_count,
         -- '0' as liked_count,
         '0' as hitchhiked_count
@@ -122,6 +190,8 @@ class MytripController extends CarpoolBaseController {
       // 从love_wall表取得数据
       $viewSql_u2 = "SELECT '0' AS infoid, a.love_wall_ID AS love_wall_ID,'1' AS trip_type,
         a.startpid,a.endpid,a.time,a.status, '0' as passengerid, a.carownid,
+        a.startname, a.start_gid, x(a.start_latlng) as start_lng , y(a.start_latlng) as start_lat ,
+        a.endname, a.end_gid,  x(a.end_latlng) as end_lng , y(a.end_latlng) as end_lat ,
         a.seat_count,
         -- (select count(*) from love_wall_like as cl where cl.love_wall_id=a.love_wall_ID) as liked_count,
         (select count(*)  from info as ci where ci.love_wall_id=a.love_wall_ID and ci.status  <>2) as hitchhiked_count
@@ -156,10 +226,12 @@ class MytripController extends CarpoolBaseController {
         $whereTime = date('YmdHi',strtotime('+15 minute'));
         $sql = "SELECT
             t.infoid , t.love_wall_ID , t.time, t.trip_type ,t.startpid, t.endpid, t.time, t.status, t.passengerid, t.carownid , t.seat_count ,  t.hitchhiked_count,
-            u1.uid as passenger_uid,u1.im_id as passenger_im_id, u1.name as passenger_name, u1.imgpath as passenger_imgpath, u1.sex as passenger_sex, u1.companyname as passenger_company, u1.Department as passenger_department, u1.phone as passenger_phone,
-            u2.uid as driver_uid,u2.im_id as driver_im_id, u2.name as driver_name, u2.imgpath as driver_imgpath, u2.sex as driver_sex, u2.companyname as driver_company, u2.Department as driver_department, u2.phone as driver_phone,
-            a1.addressid as from_address_id,a1.addressname as from_address_name,a1.longtitude as from_longtitude,a1.Latitude as from_latitude,
-            a2.addressid as to_address_id,a2.addressname as to_address_name,a2.longtitude as to_longtitude,a2.Latitude as to_latitude
+            t.start_lat, t.start_lng, t.startname , t.start_gid,
+            t.end_lat, t.end_lng, t.endname , t.end_gid,
+            u1.uid as passenger_uid,u1.im_id as passenger_im_id, u1.name as passenger_name, u1.imgpath as passenger_imgpath, u1.sex as passenger_sex, u1.companyname as passenger_company, u1.Department as passenger_department, u1.phone as passenger_phone,u1.mobile as passenger_mobile,
+            u2.uid as driver_uid,u2.im_id as driver_im_id, u2.name as driver_name, u2.imgpath as driver_imgpath, u2.sex as driver_sex, u2.companyname as driver_company, u2.Department as driver_department, u2.phone as driver_phone,u2.mobile as driver_mobile,
+            a1.addressid as from_address_id,a1.addressname as from_address_name,a1.longtitude as from_longitude,a1.Latitude as from_latitude,
+            a2.addressid as to_address_id,a2.addressname as to_address_name,a2.longtitude as to_longitude,a2.Latitude as to_latitude
           FROM
             ($viewSql) as t
             LEFT JOIN user u1 on t.passengerid = u1.uid
@@ -187,9 +259,21 @@ class MytripController extends CarpoolBaseController {
           $datas[$key]['driver_uid'] = $uid;
           $datas[$key]['carownid'] = $uid;
           $datas[$key]['driver_name'] = $userData['name'];
-
         }
-
+        if(!is_numeric($value['startpid']) || $value['startpid'] < 1 ){
+          $datas[$key]['from_address_id'] = $value['start_gid'];
+          $datas[$key]['from_address_name'] = $value['startname'];
+          $datas[$key]['from_latitude'] = $value['start_lat'];
+          $datas[$key]['from_longitude'] = $value['start_lng'];
+        }
+        if(!is_numeric($value['endpid']) || $value['endpid'] < 1 ){
+          $datas[$key]['to_address_id'] = $value['end_gid'];
+          $datas[$key]['to_address_name'] = $value['endname'];
+          $datas[$key]['to_latitude'] = $value['end_lat'];
+          $datas[$key]['to_longitude'] = $value['end_lng'];
+        }
+        $datas[$key]['from_longtitude'] = $datas[$key]['from_longitude'];
+        $datas[$key]['to_longtitude'] = $datas[$key]['to_longitude'];
       }
 
       $data = array('lists'=>$datas,'page'=>$pageReturn);
@@ -594,7 +678,7 @@ class MytripController extends CarpoolBaseController {
      * @return array             返回处理后的数组数据
      */
     private function formatListDatas($datas,$fields='*',$primaryKey = 'infoid',$from='info'){
-      $uArray = array('name'=>'','phone'=>'','loginname'=>'','Department'=>'','carnumber'=>'','uid'=>'','imgpath'=>'','mobile'=>'');
+      $uArray = array('name'=>'','phone'=>'','loginname'=>'','Department'=>'','carnumber'=>'','uid'=>'','imgpath'=>'','mobile'=>'','department_id');
       if($from == 'info'){
         $uid = $this->userBaseInfo->uid;
       }
@@ -602,42 +686,80 @@ class MytripController extends CarpoolBaseController {
 
       foreach ($datas as $key => $value) {
 
-        $valueArray = json_decode(CJSON::encode($value),true);
+        // $valueArray = json_decode(CJSON::encode($value),true);
         if(is_array($fields)){
           foreach($fields as $field){
-            $lists[$key][$field] = $valueArray[$field];
+            $lists[$key][$field] = $value[$field];
           }
         }else{
-          $lists[$key] = $valueArray;
+          $lists[$key] = $value;
         }
+        // var_dump($datas);exit;
 
         $lists[$key]['from'] = $from;
-        $lists[$key]['id'] = $value->$primaryKey;
-        $lists[$key]['time'] = date('Y-m-d H:i',strtotime($value->time.'00'));
-        $lists[$key]['subtime'] = date('Y-m-d H:i',strtotime($value->subtime.'00'));
+        $lists[$key]['id'] = $value[$primaryKey];
+        $lists[$key]['time'] = date('Y-m-d H:i',strtotime($value['time'].'00'));
+        $lists[$key]['subtime'] = date('Y-m-d H:i',strtotime($value['subtime'].'00'));
         // $lists[$key]['start_info'] = $value['startpid'] ? Address::model()->getDataById($value['startpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
         // $lists[$key]['end_info'] =  $value['endpid'] ?  Address::model()->getDataById($value['endpid'],['addressid','addressname','latitude','longtitude','city']):array('addressname'=>'-');
         // $lists[$key]['owner_info'] =  $value['carownid'] ?  CP_User::model()->getDataById($value['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber']):array('name'=>'-');
-        $lists[$key]['start_info']      = $value->startpid ? json_decode(CJSON::encode($value->start),true) :array('addressname'=>'-') ;
+        $lists[$key]['start_info']      = $value['startpid'] > 0 && $value['s_addressname']?
+                                            [ "addressname" => $value['s_addressname'],
+                                              "latitude" => $value['s_latitude'],
+                                              "longtitude" => $value['s_longtitude'],
+                                              "longitude" => $value['s_longtitude'],
+                                            ] :
+                                            [ "addressname" => $value['startname'],
+                                              "latitude" => $value['start_lat'],
+                                              "longtitude" => $value['start_lng'],
+                                              "longitude" => $value['start_lng'],
+                                            ] ;
+        $lists[$key]['end_info']      = $value['endpid'] > 0 && $value['e_addressname']?
+                                            [ "addressname" => $value['e_addressname'],
+                                              "latitude" => $value['e_latitude'],
+                                              "longtitude" => $value['e_longtitude'],
+                                              "longitude" => $value['e_longtitude'],
+                                            ] :
+                                            [ "addressname" => $value['endname'],
+                                              "latitude" => $value['end_lat'],
+                                              "longtitude" => $value['end_lng'],
+                                              "longitude" => $value['end_lng'],
+                                            ] ;
+        $lists[$key]['owner_info']      = $value['carownid'] ?
+                                            array('name'=>$value['d_name'],
+                                                  'phone'=>$value['d_phone'],
+                                                  'loginname'=>$value['d_loginname'],
+                                                  'Department'=>$value['d_department'],
+                                                  'carnumber'=>$value['d_carnumber'],
+                                                  'uid'=>$value['carownid'],
+                                                  'imgpath'=>$value['d_imgpath'],
+                                                  'mobile'=>$value['d_mobile']
+                                              ) : $uArray ;
 
-        $lists[$key]['end_info']        = $value->endpid ? json_decode(CJSON::encode($value->end),true) :array('addressname'=>'-') ;
+        // $lists[$key]['end_info']        = $value['endpid'] > 0 ? json_decode(CJSON::encode($value->end),true) :array('addressname'=>'-') ;
         if($from=='info'){
-          $lists[$key]['show_owner']      = $uid == $value->passengerid &&  $value->carownid  ?  1 : 0;
-          $lists[$key]['passenger_info']  = $value->passengerid ? array('name'=>$value->user->name,'phone'=>$value->user->phone,'loginname'=>$value->user->loginname,
-                                                                        'Department'=>$value->user->Department,'carnumber'=>$value->user->carnumber,'uid'=>$value->user->uid,
-                                                                        'imgpath'=>$value->user->imgpath,'mobile'=>$value->user->mobile) : $uArray ;
-          $lists[$key]['owner_info']      = $value->carownid    ? array('name'=>$value->carowner->name,'phone'=>$value->carowner->phone,'loginname'=>$value->carowner->loginname,
-                                                                        'Department'=>$value->carowner->Department,'carnumber'=>$value->carowner->carnumber,'uid'=>$value->carowner->uid,
-                                                                        'imgpath'=>$value->carowner->imgpath,'mobile'=>$value->carowner->mobile): $uArray;
+          $lists[$key]['show_owner']      = $uid == $value['passengerid']  &&  $value['carownid'] > 0  ?  1 : 0;
+          $lists[$key]['passenger_info']  = $value['passengerid'] ?
+                                              array('name'=>$value['p_name'],
+                                                    'phone'=>$value['p_phone'],
+                                                    'loginname'=>$value['p_loginname'],
+                                                    'Department'=>$value['p_department'],
+                                                    'carnumber'=>$value['p_carnumber'],
+                                                    'uid'=>$value['passengerid'],
+                                                    'imgpath'=>$value['p_imgpath'],
+                                                    'mobile'=>$value['p_mobile']
+                                                ) : $uArray ;
+
           // $lists[$key]['passenger_info'] =  $value['passengerid'] ?  CP_User::model()->getDataById($value['passengerid'],['uid','name','loginname','deptid','phone']):array('name'=>'-');
 
         }
+
+
         if($from=='wall'){
-          $lists[$key]['owner_info']      = array('name'=>$value->user->name,'phone'=>$value->user->phone,'loginname'=>$value->user->loginname,'Department'=>$value->user->Department,'carnumber'=>$value->user->carnumber,'uid'=>$value->user->uid,'imgpath'=>$value->user->imgpath);
           //取点赞数
-          $lists[$key]['like_count'] = WallLike::model()->count('love_wall_ID='.$value->love_wall_ID);
+          $lists[$key]['like_count'] = WallLike::model()->count('love_wall_ID='.$value['love_wall_ID']);
           //取已坐数
-          $lists[$key]['took_count'] = Info::model()->count('love_wall_ID='.$value->love_wall_ID.' and status <> 2');
+          $lists[$key]['took_count'] = Info::model()->count('love_wall_ID='.$value['love_wall_ID'].' and status <> 2');
         }
 
       }
