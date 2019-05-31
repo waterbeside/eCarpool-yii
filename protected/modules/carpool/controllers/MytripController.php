@@ -220,7 +220,7 @@ class MytripController extends CarpoolBaseController {
       );
       if(isset($_GET[$pages->pageVar]) && $_GET[$pages->pageVar] > $pages->getPageCount()){
         $datas = array();
-        $this->ajaxReturn(20002,$data,'No data');
+        $this->ajaxReturn(20002,$datas,'No data');
 
       }else{
         $whereTime = date('YmdHi',strtotime('+15 minute'));
@@ -245,6 +245,9 @@ class MytripController extends CarpoolBaseController {
           $sql_limit
         ";
         $datas = $connection->createCommand($sql)->query()->readAll();
+      }
+      if(!$datas){
+        $this->ajaxReturn(20002,[],'empty');
       }
 
       // var_dump($datas);exit;

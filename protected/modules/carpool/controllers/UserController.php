@@ -218,6 +218,9 @@ class UserController extends  CarpoolBaseController {
     $identifier = $this->sGet('identifier');
     $userInfo = $this->getUser();
     $department = $userInfo->Department;
+    //临时关闭接口
+    // $this->ajaxReturn(0,array("user_list"=>[]),"查找不到数据");
+    // exit;
 
     if(trim($identifier)==""){
       $this->ajaxReturn(-1,[],"关键字不能为空");
@@ -229,13 +232,13 @@ class UserController extends  CarpoolBaseController {
       $criteria->addCondition('company_id = '.$userInfo->company_id);
     }
     $criteria->addCondition(" im_md5password IS NOT NULL");
-    $criteria->addCondition("name like '%".$identifier."%' or loginname = '".$identifier."' or phone = '".$identifier."'");
+    $criteria->addCondition("name like '%".$identifier."%' or nativename like '%".$identifier."%' or loginname = '".$identifier."' or phone = '".$identifier."'");
 
 
     $criteria->order = 'uid ASC';
     $results = $model->findAll($criteria);
     if(!$results){
-      $this->ajaxReturn(0,array("user_list"=>[]),"查找不到数据");
+      $this->ajaxReturn(0,array("user_list"=>[]),"No data");
     }
     // var_dump($results);
     $userSameDptList = [];
@@ -270,8 +273,8 @@ class UserController extends  CarpoolBaseController {
  */
   public function actionRecommendation($type = false,$limit = 0 ,$isAjaxReturn = true){
     //关闭接口
-    $this->ajaxReturn(0,array("user_list"=>[]),"success");
-    exit;
+    // $this->ajaxReturn(0,array("user_list"=>[]),"success");
+    // exit;
 
     $type = $type === false ?  $this->iGet('type',0) : $type;
     $limit = $limit ?  $limit : $this->iGet('limit',20)  ;
@@ -288,6 +291,7 @@ class UserController extends  CarpoolBaseController {
     switch ($type) {
       case 1:  //推荐同部门好友
         $criteria->addCondition('is_active = 1');
+        $criteria->addCondition('is_delete = 0');
 
         if($userInfo->company_id){
           $criteria->addCondition("company_id = '$userInfo->company_id'");
@@ -327,7 +331,7 @@ class UserController extends  CarpoolBaseController {
             WHERE (i.carownid =  '$uid' OR  i.passengerid =  '$uid') AND i.passengerid IS NOT NULL AND i.carownid IS NOT NULL
             ORDER BY i.time DESC
           ) as t
-          LEFT JOIN user AS u ON t.uid = u.uid AND u.is_active = 1 AND im_md5password IS NOT NULL
+          LEFT JOIN user AS u ON t.uid = u.uid AND u.is_active = 1 AND u.is_delete = 0 AND im_md5password IS NOT NULL
           WHERE u.uid <> $uid LIMIT $limit
         ";
         $results = $connection->createCommand($sql)->query()->readAll();

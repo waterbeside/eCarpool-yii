@@ -64,7 +64,7 @@ class CarpoolBaseController extends BaseController {
 		parent::init();
 
 		$unCheckControllers  = array('publics'); //不用进行用户验证的控制器
-		$unCheckActions  = array('carpool/nim/test',"carpool/im_group/get_invitation"); //不用进行用户验证的路由地址，
+		$unCheckActions  = array('carpool/nim/test',"carpool/im_group/get_invitation","carpool/im_group/placeholder_users"); //不用进行用户验证的路由地址，
 
 		$ctr = Yii::app()->controller->id;
 		$pathInfo = Yii::app()->request->getPathInfo();

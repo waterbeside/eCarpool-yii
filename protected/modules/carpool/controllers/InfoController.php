@@ -187,7 +187,8 @@ class InfoController extends  CarpoolBaseController {
     }
     $data['passenger_info']   = $data['passengerid'] ?   CP_User::model()->getDataById($data['passengerid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath','mobile']):array('name'=>'-');
     $data['owner_info']   = $data['carownid'] ?   CP_User::model()->getDataById($data['carownid'],['uid','name','loginname','deptid','phone','Department','carnumber','imgpath','mobile']):array('name'=>'-');
-
+    $data['passenger_info']  = $data['passenger_info'] ? $data['passenger_info'] : array('name'=>'-');
+    $data['owner_info']  = $data['owner_info'] ? $data['owner_info'] : array('name'=>'-');
     $data['uid']          = $this->userBaseInfo->uid;
     // return $this->success('加载成功','',$data);
     $this->ajaxReturn(0,$data,'success');

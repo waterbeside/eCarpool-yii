@@ -61,6 +61,7 @@ class StatementController extends BaseController {
    * @return [type] [description]
    */
   public function actionScore_lists(){
+    exit;
     $month      = $this->sRequest('month');
     $admin      = $this->sRequest('admin');
     $page       = $this->iRequest('page');
@@ -867,9 +868,17 @@ class StatementController extends BaseController {
      $period = $this->getMonthPeriod($yearMonth.'-01',"YmdHi");
      $connection = Yii::app()->carpoolDb;
 
+     $cacheDatasKey   = "statement_month_ranking_{$type}_{$yearMonth}";
+     $cacheExpiration = 60*60*24;
+     $cacheDatas = Yii::app()->cache->get($cacheDatasKey);
+
+     if($cacheDatas){
+       return $this->ajaxReturn(0,$cacheDatas,"success");
+
+     }
      switch ($type) {
        case 0:  //取得司机排名。
-          $where = " t.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."";
+          $where = " t.status <> 2 AND carownid IS NOT NULL AND carownid > 0 AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."";
           $tableAll = " SELECT carownid, passengerid ,time , MAX(infoid) as infoid FROM info as t WHERE $where GROUP BY carownid , time, passengerid "; //取得当月所有，去除拼同司机同时间同乘客的数据。
           $limit = " LIMIT 50 ";
           $sql = "SELECT u.uid, u.name, u.loginname , u.companyname , count(ta.passengerid) as num FROM ( $tableAll ) as ta LEFT JOIN user as u on ta.carownid =  u.uid  GROUP BY  carownid   ORDER BY num DESC $limit";
@@ -878,11 +887,13 @@ class StatementController extends BaseController {
             "lists"=> $datas,
             "month"=> $yearMonth
           );
+          Yii::app()->cache->set($cacheDatasKey, $returnData ,$cacheExpiration);
+
           return $this->ajaxReturn(0,$returnData,"success");
 
          break;
        case 1: //取得乘客排名
-         $where = " t.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."";
+         $where = " t.status <> 2 AND carownid IS NOT NULL AND carownid > 0 AND t.time >=  ".$period[0]." AND t.time < ".$period[1]."";
          $tableAll = " SELECT   passengerid ,time , MAX(infoid) as infoid , MAX(carownid) as carownid FROM info as t WHERE $where GROUP BY   time, passengerid "; //取得当月所有，去除拼同司机同时间同乘客的数据。
          $limit = " LIMIT 50 ";
          $sql = "SELECT u.uid, u.name, u.loginname , u.companyname , count(ta.infoid) as num  FROM ( $tableAll ) as ta LEFT JOIN user as u on ta.passengerid =  u.uid  GROUP BY  passengerid   ORDER BY num DESC $limit";
@@ -891,6 +902,7 @@ class StatementController extends BaseController {
            "lists"=> $datas,
            "month"=> $yearMonth
          );
+         Yii::app()->cache->set($cacheDatasKey, $returnData ,$cacheExpiration);
          return $this->ajaxReturn(0,$returnData,"success");
          break;
 
@@ -907,16 +919,25 @@ class StatementController extends BaseController {
       $today    = date("Y-m-d");
       $tomorrow = date("Y-m-d",strtotime("$today +1 day"));
       $period = array(date("Ymd0000",strtotime($today)),date("Ymd0000",strtotime($tomorrow)));
+
+      $cacheDatasKey   = "statement_today_info";
+      $cacheExpiration = 60*60;
+      $cacheDatas = Yii::app()->cache->get($cacheDatasKey);
+
+      if($cacheDatas){
+        return $this->ajaxReturn(0,$cacheDatas,"success");
+      }
+
       $connection = Yii::app()->carpoolDb;
       // var_dump($period);
-      $where = " i.status <> 2 AND carownid IS NOT NULL AND carownid <> '' AND i.time >=  ".$period[0]." AND i.time < ".$period[1]."";
+      $where = " i.status <> 2 AND carownid IS NOT NULL AND carownid > 0 AND i.time >=  ".$period[0]." AND i.time < ".$period[1]."";
       $whereIds = "SELECT MIN(ii.infoid) FROM  (select * from info as i where $where ) as ii GROUP BY ii.passengerid , ii.time    ";
 
       $sql = "SELECT i.infoid, i.carownid, i.passengerid, c.name as name_o, c.companyname as companyname_o,c.carnumber, p.name as name_p, p.companyname as companyname_p, i.time
         FROM info as i
         LEFT JOIN user AS c ON c.uid = i.carownid
         LEFT JOIN user AS p ON p.uid = i.passengerid
-        WHERE   i.infoid in($whereIds)
+        WHERE   i.infoid in($whereIds) 
         ORDER BY c.companyname DESC,i.carownid DESC
       ";
       $datas = $connection->createCommand($sql)->query()->readAll();
@@ -925,6 +946,7 @@ class StatementController extends BaseController {
           $datas[$key]['time'] = date("H:i",strtotime($value['time']));
           $datas[$key]['date_time'] = date("Y-m-d H:i",strtotime($value['time']));
         }
+        Yii::app()->cache->set($cacheDatasKey, ['lists'=>$datas] ,$cacheExpiration);
         return $this->ajaxReturn(0,['lists'=>$datas],"success");
       }else{
         return $this->ajaxReturn(-1,[],"fail");

@@ -9,7 +9,7 @@ class Im_groupController extends CarpoolBaseController {
 
 
   protected $NIM_OBJ ;
-  protected $baseInvitationUrl = "http://h5.ultrarich.io/as/i.php" ;
+  protected $baseInvitationUrl = "http://gitesite.net/j/i.php" ;
   protected $placeholder_users = array("ph_f272e017046d1b26","ph_2c2351e0b9e80029","ph_7e88149af8dd32b2"); //联系人，微信好友，facebook好友。
   protected $inventMsg = "{{username}}邀请你加入溢起拼车群聊组,点击链接完善资料即刻加入"; //邀请返回的信息
 
